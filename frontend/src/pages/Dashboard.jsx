@@ -381,7 +381,7 @@ const Dashboard = () => {
               ) : (
                 <div className="papers-list">
                   {filteredPapers.map((paper) => {
-                    const extension = paper.file_url?.split('.').pop().toUpperCase();
+                    //const extension = paper.file_url?.split('.').pop().toUpperCase();
                     
                     return (
                       <div key={paper.id} className="paper-item">

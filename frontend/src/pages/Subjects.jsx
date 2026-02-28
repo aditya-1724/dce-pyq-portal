@@ -16,7 +16,7 @@ export default function Subjects() {
       return;
     }
     fetchSubjects();
-  }, []);
+  }, [token, user, navigate]);
 
   const fetchSubjects = async () => {
     try {

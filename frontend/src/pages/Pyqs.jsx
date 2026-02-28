@@ -5,7 +5,7 @@ export default function Pyqs() {
   const [papers, setPapers] = useState([]);
   const [filteredPapers, setFilteredPapers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  //const [error, setError] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -30,7 +30,7 @@ export default function Pyqs() {
       return;
     }
     fetchPapers();
-  }, [subjectId]);
+  }, [subjectId, token, user, navigate]);
 
   // Filter by type and search
   useEffect(() => {

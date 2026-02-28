@@ -21,8 +21,7 @@ const Profile = () => {
     if (userFromStorage) {
       setUserData(userFromStorage);
     }
-  }, []);
-
+  }, [userFromStorage]);
   // Initial setup
   useEffect(() => {
     if (!token || !userFromStorage) {
@@ -33,7 +32,7 @@ const Profile = () => {
     fetchUserProfile();
     fetchFavorites();
     loadProfilePic();
-  }, []);
+  }, [token, userFromStorage, navigate]);
 
   // Fetch subjects when userData is available
   useEffect(() => {
@@ -41,7 +40,7 @@ const Profile = () => {
       console.log("📚 Fetching subjects for:", userData.branch, userData.semester);
       fetchSubjects();
     }
-  }, [userData]);
+  }, [userData?.branch, userData?.semester]);
 
   const fetchUserProfile = async () => {
     try {

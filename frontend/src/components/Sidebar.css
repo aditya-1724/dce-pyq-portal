@@ -1,0 +1,148 @@
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  position: fixed;
+  background: linear-gradient(180deg, #0f172a, #1e293b);
+  backdrop-filter: blur(20px);
+  color: white;
+  padding: 25px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5);
+  transition: 0.4s ease;
+}
+/* Theme Variables */
+.dark-theme .sidebar {
+  background: linear-gradient(180deg, #0f172a, #1e293b);
+}
+
+.light-theme .sidebar {
+  background: linear-gradient(180deg, #ffffff, #f1f5f9);
+  border-right: 1px solid #e2e8f0;
+}
+
+.light-theme .logo,
+.light-theme .student-name,
+.light-theme .menu-item,
+.light-theme .submenu-item {
+  color: #0f172a;
+}
+
+.light-theme .menu-item:hover {
+  background: linear-gradient(135deg, #3b82f6, #9333ea);
+  color: white;
+}
+
+.light-theme .submenu-item:hover {
+  background: #e2e8f0;
+}
+
+.light-theme .bottom-menu div {
+  color: #0f172a;
+}
+
+.light-theme .bottom-menu div:hover {
+  background: crimson;
+  color: white;
+}
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.student-name {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-bottom: 30px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-bottom: 8px;
+}
+
+.menu-item:hover {
+  background: linear-gradient(135deg, #3b82f6, #9333ea);
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.6);
+}
+
+.menu-item.active {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.8);
+}
+
+.submenu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+  margin-left: 15px;
+}
+
+.submenu.open {
+  max-height: 400px;  /* Pehle 200px tha */
+  overflow-y: auto;    /* Scroll allow karo */
+}
+
+/* Scrollbar styling (optional) */
+.submenu.open::-webkit-scrollbar {
+  width: 9px;
+}
+
+.submenu.open::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.submenu.open::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+
+.submenu div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-bottom: 5px;
+}
+
+.submenu div:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.submenu .active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.arrow {
+  margin-left: auto;
+  transition: 0.3s;
+}
+
+.rotate {
+  transform: rotate(180deg);
+}
+
+.bottom-menu div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.bottom-menu div:hover {
+  background: crimson;
+}

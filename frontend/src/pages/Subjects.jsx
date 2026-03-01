@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";  // 👈 useCallback import kiya
 import { useNavigate } from "react-router-dom";
 
 export default function Subjects() {
@@ -10,15 +10,8 @@ export default function Subjects() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const token = localStorage.getItem("access_token");
 
-  useEffect(() => {
-    if (!token || !user) {
-      navigate("/");
-      return;
-    }
-    fetchSubjects();
-  }, [token, user, navigate]);
-
-  const fetchSubjects = async () => {
+  // 👇 FETCH SUBJECTS FUNCTION - useCallback mein wrap kiya
+  const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(
@@ -50,10 +43,18 @@ export default function Subjects() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.branch, user?.semester, token]);  // 👈 dependencies
+
+  // 👇 USE EFFECT - dependencies sahi kiya
+  useEffect(() => {
+    if (!token || !user) {
+      navigate("/");
+      return;
+    }
+    fetchSubjects();
+  }, [token, user, navigate, fetchSubjects]);
 
   const handleSubjectClick = (subject) => {
-    // Navigate to PYQs page with subject ID
     navigate(`/pyqs?subjectId=${subject.id}&subjectName=${encodeURIComponent(subject.subject_name)}`);
   };
 

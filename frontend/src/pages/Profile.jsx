@@ -32,7 +32,7 @@ const Profile = () => {
     fetchUserProfile();
     fetchFavorites();
     loadProfilePic();
-  }, [token, userFromStorage, navigate]);
+  }, [token, userFromStorage, navigate, fetchUserProfile, fetchFavorites, loadProfilePic]);
 
   // Fetch subjects when userData is available
   useEffect(() => {
@@ -40,7 +40,7 @@ const Profile = () => {
       console.log("📚 Fetching subjects for:", userData.branch, userData.semester);
       fetchSubjects();
     }
-  }, [userData?.branch, userData?.semester]);
+  }, [userData?.branch, userData?.semester, fetchSubjects]);
 
   const fetchUserProfile = async () => {
     try {

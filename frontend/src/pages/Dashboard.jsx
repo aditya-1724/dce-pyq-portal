@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import "./Dashboard.css";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";  
 import collegeImage from "../layout/college.jpg";
 
 const Dashboard = () => {

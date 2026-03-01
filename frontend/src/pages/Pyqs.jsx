@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function Pyqs() {
   const [papers, setPapers] = useState([]);
   const [filteredPapers, setFilteredPapers] = useState([]);
   const [loading, setLoading] = useState(true);
-  //const [error, setError] = useState("");
+  const [error, setError] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -20,37 +20,8 @@ export default function Pyqs() {
 
   const paperTypes = ["all", "Sessional", "PreUniversity", "University"];
 
-  useEffect(() => {
-    if (!token || !user) {
-      navigate("/");
-      return;
-    }
-    if (!subjectId) {
-      navigate("/subjects");
-      return;
-    }
-    fetchPapers();
-  }, [subjectId, token, user, navigate]);
-
-  // Filter by type and search
-  useEffect(() => {
-    let filtered = papers;
-    
-    if (selectedType !== "all") {
-      filtered = filtered.filter(paper => paper.type === selectedType);
-    }
-    
-    if (searchTerm.trim() !== "") {
-      filtered = filtered.filter(paper => 
-        paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (paper.year && paper.year.toString().includes(searchTerm))
-      );
-    }
-    
-    setFilteredPapers(filtered);
-  }, [selectedType, searchTerm, papers]);
-
-  const fetchPapers = async () => {
+  // 👇 FETCH PAPERS FUNCTION - useCallback mein wrap kiya
+  const fetchPapers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(
@@ -76,7 +47,38 @@ export default function Pyqs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [subjectId, user?.branch, user?.semester, token]); // 👈 dependencies
+
+  // 👇 USE EFFECT - dependencies sahi kiya
+  useEffect(() => {
+    if (!token || !user) {
+      navigate("/");
+      return;
+    }
+    if (!subjectId) {
+      navigate("/subjects");
+      return;
+    }
+    fetchPapers();
+  }, [subjectId, token, user, navigate, fetchPapers]);
+
+  // Filter by type and search
+  useEffect(() => {
+    let filtered = papers;
+    
+    if (selectedType !== "all") {
+      filtered = filtered.filter(paper => paper.type === selectedType);
+    }
+    
+    if (searchTerm.trim() !== "") {
+      filtered = filtered.filter(paper => 
+        paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (paper.year && paper.year.toString().includes(searchTerm))
+      );
+    }
+    
+    setFilteredPapers(filtered);
+  }, [selectedType, searchTerm, papers]);
 
   const handlePreview = (fileUrl) => {
     const fullUrl = `http://127.0.0.1:5000/uploads/${fileUrl}`;
@@ -118,7 +120,7 @@ export default function Pyqs() {
         </p>
       </div>
 
-      {/* 👇 SEARCH BAR */}
+      {/* Search Bar */}
       <div className="mb-4">
         <div className="relative">
           <input
@@ -157,6 +159,13 @@ export default function Pyqs() {
         ))}
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-600/20 border border-red-500/50 text-red-400 p-4 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
       {/* Papers List */}
       {filteredPapers.length === 0 ? (
         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-12 text-center border border-white/10">
@@ -185,13 +194,13 @@ export default function Pyqs() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handlePreview(paper.file_url, paper)}
+                    onClick={() => handlePreview(paper.file_url)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                   >
                     👁️ Preview
                   </button>
                   <button
-                    onClick={() => handleDownload(paper.file_url, paper.title, paper)}
+                    onClick={() => handleDownload(paper.file_url)}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                   >
                     📥 Download

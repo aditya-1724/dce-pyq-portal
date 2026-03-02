@@ -17,6 +17,5 @@ EXPOSE 5000
 # Print debug info
 RUN echo "Current directory: $(pwd)" && ls -la
 
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--log-level", "debug"]
-# Sleep for 1 hour instead of running gunicorn
-CMD sleep 3600
+# Sleep for 1 hour for debugging
+CMD ["sleep", "3600"]

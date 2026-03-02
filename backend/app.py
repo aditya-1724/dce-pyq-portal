@@ -118,15 +118,13 @@ def send_otp_async(email, otp, name):
     """Background mein OTP bhejo"""
     try:
         from mail_utils import send_otp_email, save_otp_to_db
-        print(f"🚀 Background thread started for {email}")
-        result = send_otp_email(email, otp, name)
-        if result:
-            save_otp_to_db(email, otp)
-            print(f"✅ Background OTP sent to {email}")
-        else:
-            print(f"❌ Background OTP failed for {email}")
+        # Timeout ke case mein bhi OTP save karo
+        send_otp_email(email, otp, name)
+        save_otp_to_db(email, otp)
     except Exception as e:
         print(f"❌ Background OTP error: {e}")
+        # Error par bhi OTP save karo taaki user verify kar sake
+        save_otp_to_db(email, otp)
 # ==================== SUBJECT ROUTES ====================
 @app.route("/subjects", methods=["GET"])
 @jwt_required()

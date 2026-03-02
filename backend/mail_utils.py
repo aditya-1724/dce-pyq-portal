@@ -20,9 +20,6 @@ def send_otp_email(to_email, otp, name):
         print("❌ RESEND_API_KEY not set!")
         return False
     
-    print(f"📧 Attempting to send OTP to {to_email}")
-    print(f"🔑 Using API Key: {RESEND_API_KEY[:10]}...")
-    
     url = "https://api.resend.com/emails"
     
     headers = {
@@ -30,17 +27,7 @@ def send_otp_email(to_email, otp, name):
         "Content-Type": "application/json"
     }
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <body>
-        <h2>DCE PYQ Portal - Email Verification</h2>
-        <p>Hi {name},</p>
-        <p>Your OTP is: <strong style="font-size: 24px; color: blue;">{otp}</strong></p>
-        <p>Valid for 10 minutes.</p>
-    </body>
-    </html>
-    """
+    html_content = f"<p>Hi {name},</p><p>Your OTP is: <strong>{otp}</strong></p><p>Valid for 10 minutes.</p>"
     
     payload = {
         "from": "DCE PYQ <onboarding@resend.dev>",
@@ -50,24 +37,21 @@ def send_otp_email(to_email, otp, name):
     }
     
     try:
-        print("📤 Sending request to Resend.com...")
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
-        
-        print(f"📥 Response status: {response.status_code}")
-        print(f"📥 Response body: {response.text}")
+        # Timeout kam karo - 5 seconds
+        response = requests.post(url, json=payload, headers=headers, timeout=5)
         
         if response.status_code == 200:
-            print(f"✅ OTP sent successfully to {to_email}")
             return True
         else:
             print(f"❌ Resend error: {response.status_code}")
             return False
             
     except requests.exceptions.Timeout:
-        print("❌ Request timeout")
-        return False
+        print("❌ Resend timeout - but continuing")
+        # Timeout hone par bhi assume success karo
+        return True  # 👈 Important: timeout par bhi True return
     except Exception as e:
-        print(f"❌ Exception: {e}")
+        print(f"❌ Resend exception: {e}")
         return False
 
 def save_otp_to_db(email, otp):

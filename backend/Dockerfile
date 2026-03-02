@@ -2,17 +2,19 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY backend/requirements.txt .
+# Copy requirements and install
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Ensure all files are in /app
+# Copy all code
 COPY . .
 
-# Print current directory for debugging
-RUN pwd && ls -la
+# Set Python path to include /app
+ENV PYTHONPATH="/app:${PYTHONPATH}"
 
 EXPOSE 5000
 
-# Start from correct directory
-WORKDIR /app
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
+# Print debug info
+RUN echo "Current directory: $(pwd)" && ls -la
+
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--log-level", "debug"]

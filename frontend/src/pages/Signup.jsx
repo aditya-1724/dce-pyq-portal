@@ -12,7 +12,7 @@ export default function Signup() {
     semester: "",
     rollNumber: ""
   });
-  const [errors, setErrors] = useState({});  // 👈 Errors ke liye
+  const [errors, setErrors] = useState({});
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,19 +22,16 @@ export default function Signup() {
       ...formData,
       [e.target.name]: e.target.value
     });
-    // Error clear karo jab user type kare
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: "" });
     }
   };
 
-  // Email validate karo
   const validateEmail = (email) => {
     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return re.test(email);
   };
 
-  // Form validate karo
   const validateForm = () => {
     const newErrors = {};
 
@@ -45,7 +42,7 @@ export default function Signup() {
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = "Invalid email format (e.g., name@example.com)";
+      newErrors.email = "Invalid email format";
     }
 
     if (!formData.password) {
@@ -68,7 +65,7 @@ export default function Signup() {
 
     if (!formData.rollNumber) {
       newErrors.rollNumber = "Roll number is required";
-    } else if (!/^\d+$/.test(formData.rollNumber)) {  // 👈 Sirf numbers check
+    } else if (!/^\d+$/.test(formData.rollNumber)) {
       newErrors.rollNumber = "Roll number must contain only numbers";
     }
 
@@ -79,7 +76,6 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Pehle form validate karo
     if (!validateForm()) {
       return;
     }
@@ -93,7 +89,7 @@ export default function Signup() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          rollNumber: parseInt(formData.rollNumber)  // Number bhejo
+          rollNumber: parseInt(formData.rollNumber)
         }),
       });
 
@@ -123,16 +119,20 @@ export default function Signup() {
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-      <div className="relative z-10 h-screen flex items-center justify-between px-20">
-        <div className="text-white max-w-md">
-          <h1 className="text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
-          <p className="text-lg opacity-90">
+      {/* 👇 MOBILE FRIENDLY CONTAINER */}
+      <div className="relative z-10 min-h-screen flex flex-col md:flex-row items-center justify-center md:justify-between px-4 md:px-20 py-8 md:py-0">
+        
+        {/* Left Text - Mobile pe upar, Desktop pe left */}
+        <div className="text-white max-w-md text-center md:text-left mb-6 md:mb-0">
+          <h1 className="text-3xl md:text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
+          <p className="text-sm md:text-lg opacity-90 px-4 md:px-0">
             Previous Year Questions for smarter exams
           </p>
         </div>
 
-        <div className="w-full max-w-md rounded-2xl p-8 bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
-          <h2 className="text-3xl font-semibold mb-2 text-gray-900">
+        {/* Signup Card - Mobile full width with scroll */}
+        <div className="w-full max-w-md rounded-2xl p-5 md:p-8 bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
+          <h2 className="text-2xl md:text-3xl font-semibold mb-2 text-gray-900">
             Create Account
           </h2>
 
@@ -142,16 +142,16 @@ export default function Signup() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             {/* Name Field */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Full Name</label>
+            <div>
+              <label className="text-xs md:text-sm text-gray-600">Full Name</label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
+                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.name ? 'border-red-500' : ''
                 }`}
               />
@@ -161,14 +161,14 @@ export default function Signup() {
             </div>
 
             {/* Email Field */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Email</label>
+            <div>
+              <label className="text-xs md:text-sm text-gray-600">Email</label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
+                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.email ? 'border-red-500' : ''
                 }`}
               />
@@ -178,14 +178,14 @@ export default function Signup() {
             </div>
 
             {/* Password Field */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Password</label>
+            <div>
+              <label className="text-xs md:text-sm text-gray-600">Password</label>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
+                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.password ? 'border-red-500' : ''
                 }`}
               />
@@ -195,18 +195,18 @@ export default function Signup() {
             </div>
 
             {/* Branch Field */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Branch</label>
+            <div>
+              <label className="text-xs md:text-sm text-gray-600">Branch</label>
               <select
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
+                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.branch ? 'border-red-500' : ''
                 }`}
               >
                 <option value="">Select Branch</option>
-                 <option value="CSIT">CSIT</option>
+                <option value="CSIT">CSIT</option>
                 <option value="CSE">CSE</option> 
                 <option value="IOT">IOT</option> 
                 <option value="ME">ME</option> 
@@ -221,59 +221,62 @@ export default function Signup() {
               )}
             </div>
 
-            {/* Year Field */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Year</label>
-              <select
-                name="year"
-                value={formData.year}
-                onChange={handleChange}
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
-                  errors.year ? 'border-red-500' : ''
-                }`}
-              >
-                <option value="">Select Year</option>
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
-              {errors.year && (
-                <p className="text-red-500 text-xs mt-1">{errors.year}</p>
-              )}
+            {/* Year & Semester Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Year Field */}
+              <div>
+                <label className="text-xs md:text-sm text-gray-600">Year</label>
+                <select
+                  name="year"
+                  value={formData.year}
+                  onChange={handleChange}
+                  className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
+                    errors.year ? 'border-red-500' : ''
+                  }`}
+                >
+                  <option value="">Year</option>
+                  <option value="1">1st</option>
+                  <option value="2">2nd</option>
+                  <option value="3">3rd</option>
+                  <option value="4">4th</option>
+                </select>
+                {errors.year && (
+                  <p className="text-red-500 text-xs mt-1">{errors.year}</p>
+                )}
+              </div>
+
+              {/* Semester Field */}
+              <div>
+                <label className="text-xs md:text-sm text-gray-600">Semester</label>
+                <select
+                  name="semester"
+                  value={formData.semester}
+                  onChange={handleChange}
+                  className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
+                    errors.semester ? 'border-red-500' : ''
+                  }`}
+                >
+                  <option value="">Sem</option>
+                  {[1,2,3,4,5,6,7,8].map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
+                {errors.semester && (
+                  <p className="text-red-500 text-xs mt-1">{errors.semester}</p>
+                )}
+              </div>
             </div>
 
-            {/* Semester Field */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Semester</label>
-              <select
-                name="semester"
-                value={formData.semester}
-                onChange={handleChange}
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
-                  errors.semester ? 'border-red-500' : ''
-                }`}
-              >
-                <option value="">Select Semester</option>
-                {[1,2,3,4,5,6,7,8].map(num => (
-                  <option key={num} value={num}>Semester {num}</option>
-                ))}
-              </select>
-              {errors.semester && (
-                <p className="text-red-500 text-xs mt-1">{errors.semester}</p>
-              )}
-            </div>
-
-            {/* Roll Number Field - Sirf Numbers */}
-            <div className="mb-6">
-              <label className="text-sm text-gray-600">Roll Number</label>
+            {/* Roll Number Field */}
+            <div>
+              <label className="text-xs md:text-sm text-gray-600">Roll Number</label>
               <input
                 type="text"
                 name="rollNumber"
                 value={formData.rollNumber}
                 onChange={handleChange}
                 placeholder="Enter your Roll Number"
-                className={`w-full mt-1 px-3 py-2 border rounded-lg ${
+                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.rollNumber ? 'border-red-500' : ''
                 }`}
               />
@@ -286,13 +289,13 @@ export default function Signup() {
               type="submit"
               disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700
-              text-white py-3 rounded-lg font-medium transition disabled:opacity-50"
+              text-white py-3 rounded-lg font-medium transition disabled:opacity-50 text-sm md:text-base"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
-          <p className="text-sm text-center mt-5 text-gray-500">
+          <p className="text-xs md:text-sm text-center mt-5 text-gray-500">
             Already have an account?{" "}
             <Link to="/" className="text-indigo-600 font-medium">
               Login

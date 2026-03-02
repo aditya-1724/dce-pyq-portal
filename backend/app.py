@@ -37,37 +37,53 @@ class Database:
     
     def connect(self):
         try:
-            # Railway se environment variables automatically inject honge
             self.connection = pymysql.connect(
                 host=os.environ.get('MYSQLHOST', 'localhost'),
                 user=os.environ.get('MYSQLUSER', 'root'),
                 password=os.environ.get('MYSQLPASSWORD', 'adi24niki'),
                 database=os.environ.get('MYSQLDATABASE', 'railway'),
                 port=int(os.environ.get('MYSQLPORT', 3306)),
-                cursorclass=pymysql.cursors.DictCursor
+                cursorclass=pymysql.cursors.DictCursor,
+                autocommit=False,
+                connect_timeout=10,
+                read_timeout=30,
+                write_timeout=30
             )
             print("✅ Database connected successfully")
+            return True
         except Exception as e:
             print(f"❌ Database connection error: {e}")
             self.connection = None
+            return False
     
     def get_cursor(self):
         try:
             if not self.connection or not self.connection.open:
-                self.connect()
+                print("🔄 Reconnecting to database...")
+                if not self.connect():
+                    return None
             return self.connection.cursor()
         except Exception as e:
-            print(f"❌ Connection lost, reconnecting...")
-            self.connect()
-            return self.connection.cursor()
+            print(f"❌ Cursor error: {e}")
+            return None
     
     def commit(self):
-        if self.connection and self.connection.open:
-            self.connection.commit()
+        try:
+            if self.connection and self.connection.open:
+                self.connection.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Commit error: {e}")
+            return False
     
     def rollback(self):
-        if self.connection and self.connection.open:
-            self.connection.rollback()
+        try:
+            if self.connection and self.connection.open:
+                self.connection.rollback()
+                return True
+        except Exception as e:
+            print(f"❌ Rollback error: {e}")
+            return False
 
 # Create global database instance
 db = Database()
@@ -813,6 +829,9 @@ def get_profile():
         current_user_id = get_jwt_identity()
         
         cursor = db.get_cursor()
+        if not cursor:
+            print("🔥 Database cursor is None - connection failed")
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor.execute("""
             SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified
             FROM users WHERE id=%s

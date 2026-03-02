@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 🔗 Backend ka URL - Railway URL daalega
-const API_URL = process.env.REACT_APP_API_URL || 'https://dce-pyq-backend.up.railway.app';
+const API_URL = process.env.REACT_APP_API_URL || 'dce-pyq-portal-production.up.railway.app';
 
 // Axios instance banao
 const api = axios.create({

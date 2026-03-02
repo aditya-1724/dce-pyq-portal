@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// 🔗 Backend ka URL - 5000 port use kar rahe hain
-const API_URL = process.env.REACT_APP_API_URL || 'https://dce-pyq-backend.onrender.com';
+// 🔗 Backend ka URL - Railway URL daalega
+const API_URL = process.env.REACT_APP_API_URL || 'https://dce-pyq-backend.up.railway.app';
+
 // Axios instance banao
 const api = axios.create({
   baseURL: API_URL,
@@ -38,7 +39,7 @@ api.interceptors.response.use(
     
     // Network error - backend nahi chal raha
     if (error.code === 'ERR_NETWORK') {
-      console.error('🔥 Backend server nahi chal raha! "python app.py" chalao');
+      console.error('🔥 Backend server nahi chal raha!');
     }
     
     // Token expire ho gaya

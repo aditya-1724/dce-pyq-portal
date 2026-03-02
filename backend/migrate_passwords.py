@@ -1,18 +1,21 @@
 # migrate_passwords.py
-import mysql.connector
+import os
+import pymysql
 from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
 
 # Database connection
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="adi24niki",
-    database="college_pyq"
+db = pymysql.connect(
+    host=os.environ.get('MYSQLHOST', 'localhost'),
+    user=os.environ.get('MYSQLUSER', 'root'),
+    password=os.environ.get('MYSQLPASSWORD', 'adi24niki'),
+    database=os.environ.get('MYSQLDATABASE', 'college_pyq'),
+    port=int(os.environ.get('MYSQLPORT', 3306)),
+    cursorclass=pymysql.cursors.DictCursor
 )
 
-cursor = db.cursor(dictionary=True)
+cursor = db.cursor()
 
 # Sab users lao
 cursor.execute("SELECT id, password FROM users")
@@ -22,10 +25,8 @@ print(f"Total users found: {len(users)}")
 
 migrated = 0
 for user in users:
-    # Check if password is already hashed (bcrypt hashes are 60 chars long and start with $2b$)
     if not user['password'].startswith('$2b$') and len(user['password']) != 60:
         try:
-            # Hash the plain text password
             hashed = bcrypt.generate_password_hash(user['password']).decode('utf-8')
             cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, user['id']))
             migrated += 1

@@ -9,5 +9,5 @@ COPY . .
 
 EXPOSE 5000
 
-# JSON array format mein CMD
+# Directly use port 5000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]

@@ -1,14 +1,10 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r backend/requirements.txt",
-    "watchPatterns": [
-      "backend/**"
-    ]
+    "buildCommand": "pip install -r backend/requirements.txt"
   },
   "deploy": {
-    "startCommand": "gunicorn backend.app:app",
+    "startCommand": "gunicorn backend.app:app --bind 0.0.0.0:5000",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE"

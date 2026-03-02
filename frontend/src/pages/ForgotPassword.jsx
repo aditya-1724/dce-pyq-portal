@@ -18,7 +18,7 @@ export default function ForgotPassword() {
     setMsg("");
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/forgot-password", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -47,7 +47,7 @@ export default function ForgotPassword() {
     setMsg("");
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/reset-password-with-otp", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/reset-password-with-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -81,7 +81,7 @@ export default function ForgotPassword() {
     setMsg("");
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/resend-otp", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

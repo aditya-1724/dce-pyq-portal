@@ -25,7 +25,7 @@ export default function Pyqs() {
     try {
       setLoading(true);
       const res = await fetch(
-        `http://127.0.0.1:5000/pyqs/${subjectId}/${user.branch}/${user.semester}`,
+        `https://dce-pyq-portal-production.up.railway.app/pyqs/${subjectId}/${user.branch}/${user.semester}`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -81,12 +81,12 @@ export default function Pyqs() {
   }, [selectedType, searchTerm, papers]);
 
   const handlePreview = (fileUrl) => {
-    const fullUrl = `http://127.0.0.1:5000/uploads/${fileUrl}`;
+    const fullUrl = `https://dce-pyq-portal-production.up.railway.app/uploads/${fileUrl}`;
     window.open(fullUrl, '_blank');
   };
 
   const handleDownload = (fileUrl, fileName) => {
-    const fullUrl = `http://127.0.0.1:5000/download/${fileUrl}`;
+    const fullUrl = `https://dce-pyq-portal-production.up.railway.app/download/${fileUrl}`;
     window.location.href = fullUrl;
   };
 

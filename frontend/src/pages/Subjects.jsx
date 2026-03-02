@@ -15,7 +15,7 @@ export default function Subjects() {
     try {
       setLoading(true);
       const res = await fetch(
-        `http://127.0.0.1:5000/subjects/${user.branch}/${user.semester}`,
+        `https://dce-pyq-portal-production.up.railway.app/subjects/${user.branch}/${user.semester}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`

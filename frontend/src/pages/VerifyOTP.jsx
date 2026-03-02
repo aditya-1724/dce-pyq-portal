@@ -57,7 +57,7 @@ export default function VerifyOTP() {
     setMsg("");
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/verify-otp", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp: otpString }),
@@ -86,7 +86,7 @@ export default function VerifyOTP() {
     setMsg("");
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/resend-otp", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

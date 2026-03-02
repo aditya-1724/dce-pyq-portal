@@ -32,7 +32,7 @@ export default function AdminDashboard() {
 
   const fetchSubjects = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/subjects", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/subjects", {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -48,7 +48,7 @@ export default function AdminDashboard() {
 
   const fetchUniqueSubjectsCount = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/subjects/count", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/subjects/count", {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
     setMessage({ type: "", text: "" });
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/add-subject", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/add-subject", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
     const autoTitle = `${selectedSubjectObj?.subject_name || 'Paper'} ${paperType} ${year}`;
     formData.append("title", autoTitle);
     try {
-      const res = await fetch("http://127.0.0.1:5000/upload-pyq", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/upload-pyq", {
         method: "POST",
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,

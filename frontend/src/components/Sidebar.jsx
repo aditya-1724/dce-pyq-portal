@@ -30,7 +30,7 @@ const Sidebar = ({ activeSection, setActiveSection, onSubjectSelect }) => {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:5000/subjects/${user.branch}/${user.semester}`,
+        `https://dce-pyq-portal-production.up.railway.app/subjects/${user.branch}/${user.semester}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await res.json();

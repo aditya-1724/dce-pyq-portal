@@ -44,7 +44,7 @@ const Profile = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/profile", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/profile", {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -70,7 +70,7 @@ const Profile = () => {
     try {
       console.log("🔍 Fetching subjects from API...");
       const res = await fetch(
-        `http://127.0.0.1:5000/subjects/${userData.branch}/${userData.semester}`,
+        `https://dce-pyq-portal-production.up.railway.app/subjects/${userData.branch}/${userData.semester}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -232,7 +232,7 @@ const Profile = () => {
     }
     
     try {
-      const res = await fetch("http://127.0.0.1:5000/upgrade-semester", {
+      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/upgrade-semester", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',

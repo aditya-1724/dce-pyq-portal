@@ -27,7 +27,7 @@ const Dashboard = () => {
   const fetchSubjects = async () => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:5000/subjects/${user.branch}/${user.semester}`,
+        `https://dce-pyq-portal-production.up.railway.app/subjects/${user.branch}/${user.semester}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -72,7 +72,7 @@ const Dashboard = () => {
     
     try {
       const res = await fetch(
-        `http://127.0.0.1:5000/pyqs/${selectedSubject.id}/${user.branch}/${user.semester}`,
+        `https://dce-pyq-portal-production.up.railway.app/pyqs/${selectedSubject.id}/${user.branch}/${user.semester}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -131,14 +131,14 @@ const Dashboard = () => {
   // Preview - New tab mein open
   const handlePreview = (fileUrl, paper) => {
     trackPaperView(paper);
-    const fullUrl = `http://127.0.0.1:5000/uploads/${fileUrl}`;
+    const fullUrl = `https://dce-pyq-portal-production.up.railway.app/uploads/${fileUrl}`;
     window.open(fullUrl, '_blank');
   };
   
   // Download - Backend se force download
   const handleDownload = (fileUrl, fileName, paper) => {
     trackPaperView(paper);
-    const downloadUrl = `http://127.0.0.1:5000/download/${fileUrl}`;
+    const downloadUrl = `https://dce-pyq-portal-production.up.railway.app/download/${fileUrl}`;
     console.log("📥 Force downloading:", downloadUrl);
     window.location.href = downloadUrl;
     
@@ -525,7 +525,7 @@ const Dashboard = () => {
                         className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-blue-500 transition cursor-pointer"
                         onClick={() => {
                           if (paper.file_url) {
-                            window.open(`http://127.0.0.1:5000/uploads/${paper.file_url}`, '_blank');
+                            window.open(`https://dce-pyq-portal-production.up.railway.app/uploads/${paper.file_url}`, '_blank');
                           }
                         }}
                       >
@@ -638,7 +638,7 @@ const Dashboard = () => {
                     onClick={() => {
                       setShowRecentModal(false);
                       if (paper.file_url) {
-                        window.open(`http://127.0.0.1:5000/uploads/${paper.file_url}`, '_blank');
+                        window.open(`https://dce-pyq-portal-production.up.railway.app/uploads/${paper.file_url}`, '_blank');
                       }
                     }}
                   >

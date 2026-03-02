@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 // 🔗 Backend ka URL - 5000 port use kar rahe hain
-const API_URL = 'http://localhost:5000';
-
+const API_URL = process.env.REACT_APP_API_URL || 'https://dce-pyq-backend.onrender.com';
 // Axios instance banao
 const api = axios.create({
   baseURL: API_URL,

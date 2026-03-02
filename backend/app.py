@@ -1,5 +1,6 @@
 import os
 import io
+import pymysql  # 👈 Railway ke liye pymysql
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_from_directory
@@ -12,9 +13,6 @@ from docx import Document
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PIL import Image
-import mysql.connector
-from mysql.connector import Error
-import time
 
 # Import mail functions
 from mail_utils import generate_otp, send_otp_email, save_otp_to_db, verify_otp_from_db
@@ -23,7 +21,7 @@ app = Flask(__name__)
 CORS(app)
 
 # ==================== JWT CONFIGURATION ====================
-app.config['JWT_SECRET_KEY'] = 'dce-pyq-portal-secret-key-2026-32bytes!!'
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dce-pyq-portal-secret-key-2026-32bytes!!')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -38,35 +36,36 @@ class Database:
     
     def connect(self):
         try:
-            self.connection = mysql.connector.connect(
-                host="localhost",
-                user="root",
-                password="adi24niki",
-                database="college_pyq"
+            # Railway se environment variables automatically inject honge
+            self.connection = pymysql.connect(
+                host=os.environ.get('MYSQLHOST', 'localhost'),
+                user=os.environ.get('MYSQLUSER', 'root'),
+                password=os.environ.get('MYSQLPASSWORD', 'adi24niki'),
+                database=os.environ.get('MYSQLDATABASE', 'college_pyq'),
+                port=int(os.environ.get('MYSQLPORT', 3306)),
+                cursorclass=pymysql.cursors.DictCursor
             )
             print("✅ Database connected successfully")
-        except Error as e:
+        except Exception as e:
             print(f"❌ Database connection error: {e}")
-            time.sleep(2)
-            self.connect()  # Retry
+            self.connection = None
     
-    def get_cursor(self, dictionary=True):
+    def get_cursor(self):
         try:
-            # Check if connection is alive
-            if not self.connection.is_connected():
+            if not self.connection or not self.connection.open:
                 self.connect()
-            return self.connection.cursor(dictionary=dictionary)
-        except Error as e:
+            return self.connection.cursor()
+        except Exception as e:
             print(f"❌ Connection lost, reconnecting...")
             self.connect()
-            return self.connection.cursor(dictionary=dictionary)
+            return self.connection.cursor()
     
     def commit(self):
-        if self.connection and self.connection.is_connected():
+        if self.connection and self.connection.open:
             self.connection.commit()
     
     def rollback(self):
-        if self.connection and self.connection.is_connected():
+        if self.connection and self.connection.open:
             self.connection.rollback()
 
 # Create global database instance
@@ -227,12 +226,11 @@ def get_pyqs(subject_id, branch, semester):
         
         papers = cursor.fetchall()
         
-        # FIX: Sirf filename bhejo (path nahi)
+        # Sirf filename bhejo
         for paper in papers:
             if paper['file_url']:
                 filename = paper['file_url'].split('/')[-1]
                 paper['file_url'] = filename
-                print(f"✅ Sending filename: {filename}")
 
         return jsonify({"success": True, "papers": papers}), 200
     except Exception as e:
@@ -269,8 +267,6 @@ def get_all_pyqs():
         if cursor:
             cursor.close()
 
-from PIL import Image
-
 @app.route("/upload-pyq", methods=["POST"])
 @jwt_required()
 def upload_pyq():
@@ -299,17 +295,13 @@ def upload_pyq():
         if not title:
             title = f"{subject_name} {paper_type} {year}"
 
-        # 👇 FIX: Special characters ko underscore se replace karo, remove mat karo
-        # Replace spaces with underscore, keep other characters
+        # Clean subject name for filename
         subject_name_clean = subject_name.replace(" ", "_")
-        # Only remove characters that are truly problematic for filenames
-        subject_name_clean = re.sub(r'[<>:"/\\|?*]', '', subject_name_clean)  # Windows reserved chars
+        subject_name_clean = re.sub(r'[<>:"/\\|?*]', '', subject_name_clean)
         
-        # Get original file extension
         original_filename = file.filename
         file_extension = original_filename.split('.')[-1].lower()
         
-        # Allowed extensions
         image_extensions = {'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'}
         doc_extensions = {'pdf', 'doc', 'docx'}
         blocked_extensions = {'zip', 'rar', '7z', 'mp4', 'mp3', 'avi', 'mov', 'exe', 'msi'}
@@ -320,11 +312,9 @@ def upload_pyq():
         if file_extension not in image_extensions and file_extension not in doc_extensions:
             return jsonify({"success": False, "message": "❌ Unsupported file type."}), 400
 
-        # Save original file temporarily
         temp_path = os.path.join(app.config["UPLOAD_FOLDER"], f"temp_{original_filename}")
         file.save(temp_path)
         
-        # Final filename (always PDF) - with original special chars
         pdf_filename = f"{branch}_Sem{semester}_{subject_name_clean}_{paper_type}_{year}.pdf"
         pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], pdf_filename)
         
@@ -339,14 +329,12 @@ def upload_pyq():
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
-        # Save to database
         cursor.execute("""
             INSERT INTO pyqs (subject_id, branch, semester, type, title, year, file_url)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (subject_id, branch, semester, paper_type, title, year, pdf_filename))
         
         db.commit()
-        
         return jsonify({"success": True, "message": "File uploaded successfully!"}), 201
         
     except Exception as e:
@@ -357,15 +345,38 @@ def upload_pyq():
         if cursor:
             cursor.close()
 
+def convert_docx_to_pdf(docx_path, pdf_path):
+    """Convert DOCX file to PDF"""
+    try:
+        doc = Document(docx_path)
+        c = canvas.Canvas(pdf_path, pagesize=letter)
+        width, height = letter
+        
+        y = height - 40
+        for paragraph in doc.paragraphs:
+            text = paragraph.text
+            if text.strip():
+                lines = text.split('\n')
+                for line in lines:
+                    if y < 40:
+                        c.showPage()
+                        y = height - 40
+                    c.drawString(40, y, line[:100])
+                    y -= 15
+            y -= 10
+        
+        c.save()
+        print(f"✅ Converted {docx_path} to {pdf_path}")
+    except Exception as e:
+        print(f"❌ Conversion error: {e}")
+        raise e
+
 def convert_image_to_pdf(image_path, pdf_path):
     """Convert image to PDF"""
     try:
         image = Image.open(image_path)
-        # Convert RGBA to RGB if needed
         if image.mode in ('RGBA', 'LA', 'P'):
-            # Create white background
             rgb_image = Image.new('RGB', image.size, (255, 255, 255))
-            # Paste image using alpha channel as mask
             if image.mode == 'RGBA':
                 rgb_image.paste(image, mask=image.split()[3])
             else:
@@ -407,15 +418,10 @@ def delete_pyq(id):
 @app.route("/download/<path:filename>")
 def download_file(filename):
     try:
-        # Don't use secure_filename - it removes special chars like '+'
-        # Just do basic path traversal check
         if '..' in filename or filename.startswith('/'):
             return jsonify({"success": False, "message": "Invalid filename"}), 400
             
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        
-        print(f"📁 Looking for file: {file_path}")
-        print(f"📂 File exists? {os.path.exists(file_path)}")
         
         if not os.path.exists(file_path):
             return jsonify({"success": False, "message": "File not found"}), 404
@@ -716,6 +722,7 @@ def reset_password_with_otp():
     finally:
         if cursor:
             cursor.close()
+
 @app.route("/upgrade-semester", methods=["POST"])
 @jwt_required()
 def upgrade_semester():
@@ -725,7 +732,6 @@ def upgrade_semester():
         user_id = data.get("userId")
         current_semester = data.get("currentSemester")
         
-        # Get user's joining date
         cursor = db.get_cursor()
         cursor.execute("SELECT created_at, semester FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
@@ -733,20 +739,16 @@ def upgrade_semester():
         if not user:
             return jsonify({"success": False, "message": "User not found"}), 404
             
-        # Calculate eligibility
         join_date = user['created_at']
         current_date = datetime.now()
         
-        # Months since joining
         months_passed = (current_date.year - join_date.year) * 12 + (current_date.month - join_date.month)
-        
-        # Each semester = 6 months
         eligible_semester = 1 + (months_passed // 6)
         
         if eligible_semester <= current_semester:
             return jsonify({
                 "success": False, 
-                "message": f"Semester {current_semester + 1} will be available from {get_next_semester_date(join_date, current_semester)}"
+                "message": f"Semester {current_semester + 1} will be available later"
             }), 400
             
         if current_semester >= 8:
@@ -774,11 +776,6 @@ def upgrade_semester():
     finally:
         if cursor:
             cursor.close()
-
-def get_next_semester_date(join_date, current_semester):
-    """Calculate when next semester starts"""
-    next_semester_start = join_date + timedelta(days=180 * current_semester)
-    return next_semester_start.strftime("%B %Y")
 
 @app.route("/profile", methods=["GET"])
 @jwt_required()
@@ -913,10 +910,5 @@ def expired_token_response(jwt_header, jwt_payload):
 # ==================== MAIN ====================
 if __name__ == "__main__":
     import os
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, debug=True)
-
-# 👇 YEH LINES - Gunicorn ke liye port binding
-import os
-port = int(os.environ.get('PORT', 10000))
-print(f"🚀 Starting Flask app on port {port}...")
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)

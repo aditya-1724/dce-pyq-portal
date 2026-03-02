@@ -1,10 +1,10 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r requirements.txt"
+    "buildCommand": "pip install -r backend/requirements.txt"
   },
   "deploy": {
-    "startCommand": "gunicorn app:app",
+    "startCommand": "gunicorn backend.app:app",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE"

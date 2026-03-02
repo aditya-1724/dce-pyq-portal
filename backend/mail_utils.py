@@ -1,77 +1,73 @@
 # mail_utils.py
 import random
-import smtplib
-import os  # 👈 YEH ADD KARO
-import pymysql  # 👈 YEH ADD KARO
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import os
+import requests
+import pymysql
 from datetime import datetime, timedelta
 
-# Email configuration (Gmail ke liye)
-EMAIL_ADDRESS = "dceguportal@gmail.com"
-EMAIL_PASSWORD = "zbxj jqde mdvm vvmi"
+# Resend API Key - Railway se lega
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+
+print(f"🔑 Resend API Key loaded: {'YES' if RESEND_API_KEY else 'NO'}")
 
 def generate_otp():
     return str(random.randint(100000, 999999))
 
 def send_otp_email(to_email, otp, name):
-    subject = "DCE PYQ Portal - Email Verification OTP"
+    """Resend.com API se OTP bhejo"""
+    
+    if not RESEND_API_KEY:
+        print("❌ RESEND_API_KEY not set!")
+        return False
+    
+    print(f"📧 Attempting to send OTP to {to_email}")
+    print(f"🔑 Using API Key: {RESEND_API_KEY[:10]}...")
+    
+    url = "https://api.resend.com/emails"
+    
+    headers = {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json"
+    }
     
     html_content = f"""
     <!DOCTYPE html>
     <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }}
-            .container {{ max-width: 600px; margin: auto; background: white; padding: 30px; 
-                         border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ font-size: 24px; font-weight: bold; color: #2563eb; }}
-            .otp-box {{ background: #2563eb; color: white; font-size: 32px; font-weight: bold;
-                       padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0;
-                       letter-spacing: 8px; }}
-            .footer {{ text-align: center; color: #666; margin-top: 30px; font-size: 14px; }}
-        </style>
-    </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <div class="logo">📚 DCE PYQ Portal</div>
-                <p>Hi {name},</p>
-            </div>
-            
-            <p>Welcome to DCE PYQ Portal! Please verify your email address using the OTP below:</p>
-            
-            <div class="otp-box">
-                {otp}
-            </div>
-            
-            <p>This OTP is valid for <strong>10 minutes</strong>.</p>
-            
-            <div class="footer">
-                <p>© 2026 DCE PYQ Portal</p>
-            </div>
-        </div>
+        <h2>DCE PYQ Portal - Email Verification</h2>
+        <p>Hi {name},</p>
+        <p>Your OTP is: <strong style="font-size: 24px; color: blue;">{otp}</strong></p>
+        <p>Valid for 10 minutes.</p>
     </body>
     </html>
     """
     
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = EMAIL_ADDRESS
-    msg['To'] = to_email
-    msg.attach(MIMEText(html_content, 'html'))
+    payload = {
+        "from": "DCE PYQ <onboarding@resend.dev>",
+        "to": [to_email],
+        "subject": "DCE PYQ Portal - Email Verification OTP",
+        "html": html_content
+    }
     
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        print(f"✅ OTP sent to {to_email}")
-        return True
+        print("📤 Sending request to Resend.com...")
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        
+        print(f"📥 Response status: {response.status_code}")
+        print(f"📥 Response body: {response.text}")
+        
+        if response.status_code == 200:
+            print(f"✅ OTP sent successfully to {to_email}")
+            return True
+        else:
+            print(f"❌ Resend error: {response.status_code}")
+            return False
+            
+    except requests.exceptions.Timeout:
+        print("❌ Request timeout")
+        return False
     except Exception as e:
-        print(f"❌ Email error: {e}")
+        print(f"❌ Exception: {e}")
         return False
 
 def save_otp_to_db(email, otp):
@@ -80,7 +76,7 @@ def save_otp_to_db(email, otp):
             host=os.environ.get('MYSQLHOST', 'localhost'),
             user=os.environ.get('MYSQLUSER', 'root'),
             password=os.environ.get('MYSQLPASSWORD', 'adi24niki'),
-            database=os.environ.get('MYSQLDATABASE', 'college_pyq'),
+            database=os.environ.get('MYSQLDATABASE', 'railway'),
             port=int(os.environ.get('MYSQLPORT', 3306)),
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -97,6 +93,7 @@ def save_otp_to_db(email, otp):
         db.commit()
         cursor.close()
         db.close()
+        print(f"✅ OTP saved to DB for {email}")
         return True
     except Exception as e:
         print(f"❌ Database error: {e}")

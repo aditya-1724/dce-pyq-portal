@@ -2,6 +2,7 @@ import os
 import io
 import pymysql  # 👈 Railway ke liye pymysql
 from datetime import datetime, timedelta
+import threading
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -112,6 +113,20 @@ def home():
         ]
     }), 200
 
+# ==================== BACKGROUND OTP FUNCTION ====================
+def send_otp_async(email, otp, name):
+    """Background mein OTP bhejo"""
+    try:
+        from mail_utils import send_otp_email, save_otp_to_db
+        print(f"🚀 Background thread started for {email}")
+        result = send_otp_email(email, otp, name)
+        if result:
+            save_otp_to_db(email, otp)
+            print(f"✅ Background OTP sent to {email}")
+        else:
+            print(f"❌ Background OTP failed for {email}")
+    except Exception as e:
+        print(f"❌ Background OTP error: {e}")
 # ==================== SUBJECT ROUTES ====================
 @app.route("/subjects", methods=["GET"])
 @jwt_required()
@@ -685,19 +700,20 @@ def forgot_password():
             return jsonify({"success": False, "message": "Email not found"}), 404
 
         otp = generate_otp()
-        if send_otp_email(email, otp, user['name']):
-            save_otp_to_db(email, otp)
-            return jsonify({
-                "success": True,
-                "message": "OTP sent to your email",
-                "email": email
-            }), 200
-        else:
-            return jsonify({"success": False, "message": "Failed to send OTP"}), 500
+        
+        # 🔥 Background thread mein OTP bhejo
+        thread = threading.Thread(target=send_otp_async, args=(email, otp, user['name']))
+        thread.start()
+        
+        return jsonify({
+            "success": True,
+            "message": "OTP sent to your email",
+            "email": email
+        }), 200
 
     except Exception as e:
         print("🔥 FORGOT PASSWORD ERROR:", e)
-        return jsonify({"success": False, "message": "Server error"}), 500
+        return jsonify({"success": False, "message": str(e)}), 500
     finally:
         if cursor:
             cursor.close()

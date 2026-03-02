@@ -97,6 +97,20 @@ def validate_email(email):
     except Exception as e:
         print(f"Domain check error: {e}")
         return False, "Could not verify email domain"
+    
+@app.route('/')
+def home():
+    return jsonify({
+        "message": "DCE PYQ Portal API",
+        "status": "running",
+        "endpoints": [
+            "/health",
+            "/subjects",
+            "/pyqs",
+            "/login",
+            "/signup"
+        ]
+    }), 200
 
 # ==================== SUBJECT ROUTES ====================
 @app.route("/subjects", methods=["GET"])

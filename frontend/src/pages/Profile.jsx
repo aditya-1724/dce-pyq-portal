@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Profile.css";
 
@@ -22,27 +22,9 @@ const Profile = () => {
       setUserData(userFromStorage);
     }
   }, [userFromStorage]);
-  // Initial setup
-  useEffect(() => {
-    if (!token || !userFromStorage) {
-      navigate("/");
-      return;
-    }
-    
-    fetchUserProfile();
-    fetchFavorites();
-    loadProfilePic();
-  }, [token, userFromStorage, navigate, fetchUserProfile, fetchFavorites, loadProfilePic]);
 
-  // Fetch subjects when userData is available
-  useEffect(() => {
-    if (userData?.branch && userData?.semester) {
-      console.log("📚 Fetching subjects for:", userData.branch, userData.semester);
-      fetchSubjects();
-    }
-  }, [userData?.branch, userData?.semester, fetchSubjects]);
-
-  const fetchUserProfile = async () => {
+  // ==================== FETCH FUNCTIONS ====================
+  const fetchUserProfile = useCallback(async () => {
     try {
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/profile", {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -59,9 +41,9 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     if (!userData?.branch || !userData?.semester) {
       console.log("⏳ Waiting for user data...");
       return;
@@ -87,10 +69,9 @@ const Profile = () => {
       console.error("❌ Error fetching subjects:", error);
       setSubjects([]);
     }
-  };
+  }, [userData?.branch, userData?.semester, token]);
 
-  const fetchFavorites = async () => {
-    // Mock data - replace with actual API
+  const fetchFavorites = useCallback(async () => {
     setFavorites([
       { 
         id: 1, 
@@ -109,15 +90,36 @@ const Profile = () => {
         addedOn: "2024-02-18"
       },
     ]);
-  };
+  }, []);
 
-  const loadProfilePic = () => {
+  const loadProfilePic = useCallback(() => {
     const savedPic = localStorage.getItem("profile_pic");
     if (savedPic) {
       setProfilePic(savedPic);
     }
-  };
+  }, []);
 
+  // Initial setup
+  useEffect(() => {
+    if (!token || !userFromStorage) {
+      navigate("/");
+      return;
+    }
+    
+    fetchUserProfile();
+    fetchFavorites();
+    loadProfilePic();
+  }, [token, userFromStorage, navigate, fetchUserProfile, fetchFavorites, loadProfilePic]);
+
+  // Fetch subjects when userData is available
+  useEffect(() => {
+    if (userData?.branch && userData?.semester) {
+      console.log("📚 Fetching subjects for:", userData.branch, userData.semester);
+      fetchSubjects();
+    }
+  }, [userData?.branch, userData?.semester, fetchSubjects]);
+
+  // ==================== HANDLERS ====================
   const handleProfilePicChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -192,7 +194,7 @@ const Profile = () => {
       .join(" ");
   };
 
-  // 👇 UPGRADE FUNCTIONS
+  // ==================== UPGRADE FUNCTIONS ====================
   const checkEligibility = () => {
     if (!userData) return { eligible: false, message: "" };
     if (userData.semester >= 8) return { eligible: false, message: "Final semester completed" };
@@ -200,11 +202,9 @@ const Profile = () => {
     const joinDate = new Date(userData.created_at);
     const now = new Date();
     
-    // Months since joining
     const monthsPassed = (now.getFullYear() - joinDate.getFullYear()) * 12 + 
                         (now.getMonth() - joinDate.getMonth());
     
-    // Each semester = 6 months
     const eligibleSemester = 1 + Math.floor(monthsPassed / 6);
     
     if (eligibleSemester > userData.semester) {
@@ -214,7 +214,6 @@ const Profile = () => {
         nextSemester: userData.semester + 1
       };
     } else {
-      // Calculate next available date
       const nextDate = new Date(joinDate);
       nextDate.setMonth(joinDate.getMonth() + (6 * userData.semester));
       
@@ -272,96 +271,98 @@ const Profile = () => {
   }
 
   return (
-    <div className="profile-container">
+    <div className="profile-container max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
       {/* Profile Header */}
-      <div className="profile-header glass-effect">
-        <div className="profile-pic-container">
+      <div className="profile-header glass-effect text-center p-6 md:p-8 mb-6 rounded-2xl">
+        <div className="profile-pic-container w-20 h-20 md:w-24 md:h-24 mx-auto mb-4 relative">
           {profilePic ? (
-            <img src={profilePic} alt="Profile" className="profile-pic" />
+            <img src={profilePic} alt="Profile" className="w-full h-full rounded-full object-cover border-4 border-white/30" />
           ) : (
-            <div className="profile-avatar">
+            <div className="w-full h-full rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-3xl md:text-4xl font-bold text-white">
               {userData?.name?.charAt(0)?.toUpperCase() || '?'}
             </div>
           )}
           
-          <div className="profile-pic-actions">
-            <label htmlFor="profile-pic-input" className="pic-upload-btn">
+          <div className="absolute bottom-0 right-0 flex gap-1">
+            <label htmlFor="profile-pic-input" className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center cursor-pointer hover:bg-white/30 transition border border-white/30">
               📷
-              <input type="file" id="profile-pic-input" accept="image/*" onChange={handleProfilePicChange} style={{ display: 'none' }} />
+              <input type="file" id="profile-pic-input" accept="image/*" onChange={handleProfilePicChange} className="hidden" />
             </label>
             {profilePic && (
-              <button onClick={removeProfilePic} className="pic-remove-btn">❌</button>
+              <button onClick={removeProfilePic} className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition border border-white/30">
+                ❌
+              </button>
             )}
           </div>
         </div>
 
-        <h1 className="profile-name">{formatName(userData?.name) || 'User'}</h1>
-        <p className="profile-role">{userData?.role?.toUpperCase() || 'STUDENT'}</p>
+        <h1 className="text-xl md:text-2xl font-bold text-white mb-1">{formatName(userData?.name) || 'User'}</h1>
+        <p className="text-xs md:text-sm text-white/60 mb-4">{userData?.role?.toUpperCase() || 'STUDENT'}</p>
         
-        <div className="profile-stats-mini">
-          <div className="stat-mini">
-            <span className="stat-mini-value">{favorites.length}</span>
-            <span className="stat-mini-label">Favorites</span>
+        <div className="flex justify-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+            <span className="text-lg md:text-xl font-bold text-yellow-400 mr-2">{favorites.length}</span>
+            <span className="text-xs md:text-sm text-white/70">Favorites</span>
           </div>
         </div>
       </div>
 
-      {/* User Info Cards */}
-      <div className="info-cards-grid">
-        <div className="info-card glass-effect">
-          <div className="info-icon">📚</div>
-          <div className="info-content">
-            <span className="info-label">Branch</span>
-            <span className="info-value">{userData?.branch || 'N/A'}</span>
+      {/* User Info Cards - 2 columns on mobile, 4 on desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 md:p-4 flex items-center gap-3">
+          <span className="text-xl md:text-2xl">📚</span>
+          <div>
+            <div className="text-xs text-white/50">Branch</div>
+            <div className="text-sm md:text-base font-semibold text-white">{userData?.branch || 'N/A'}</div>
           </div>
         </div>
         
-        <div className="info-card glass-effect">
-          <div className="info-icon">📅</div>
-          <div className="info-content">
-            <span className="info-label">Year</span>
-            <span className="info-value">{userData?.year || 'N/A'}</span>
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 md:p-4 flex items-center gap-3">
+          <span className="text-xl md:text-2xl">📅</span>
+          <div>
+            <div className="text-xs text-white/50">Year</div>
+            <div className="text-sm md:text-base font-semibold text-white">{userData?.year || 'N/A'}</div>
           </div>
         </div>
         
-        <div className="info-card glass-effect">
-          <div className="info-icon">📖</div>
-          <div className="info-content">
-            <span className="info-label">Semester</span>
-            <span className="info-value">{userData?.semester || 'N/A'}</span>
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 md:p-4 flex items-center gap-3">
+          <span className="text-xl md:text-2xl">📖</span>
+          <div>
+            <div className="text-xs text-white/50">Semester</div>
+            <div className="text-sm md:text-base font-semibold text-white">{userData?.semester || 'N/A'}</div>
           </div>
         </div>
         
-        <div className="info-card glass-effect">
-          <div className="info-icon">🆔</div>
-          <div className="info-content">
-            <span className="info-label">Roll Number</span>
-            <span className="info-value">{userData?.roll_number || 'N/A'}</span>
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 md:p-4 flex items-center gap-3">
+          <span className="text-xl md:text-2xl">🆔</span>
+          <div>
+            <div className="text-xs text-white/50">Roll No</div>
+            <div className="text-sm md:text-base font-semibold text-white">{userData?.roll_number || 'N/A'}</div>
           </div>
         </div>
       </div>
 
-      {/* 👇 UPGRADE SECTION */}
+      {/* UPGRADE SECTION */}
       {userData?.semester < 8 && (
-        <div className="mt-4 p-4 bg-white/5 rounded-lg">
-          <h3 className="text-white font-semibold mb-2">📅 Semester Progress</h3>
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6">
+          <h3 className="text-white font-semibold mb-3 text-base md:text-lg">📅 Semester Progress</h3>
           
           {(() => {
             const eligibility = checkEligibility();
             return (
               <>
-                <p className="text-white/70 text-sm mb-3">{eligibility.message}</p>
+                <p className="text-white/70 text-xs md:text-sm mb-4">{eligibility.message}</p>
                 
                 {eligibility.eligible ? (
                   <button
                     onClick={handleUpgrade}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2 text-sm md:text-base"
                   >
                     <span>⬆️</span>
                     Upgrade to Semester {eligibility.nextSemester}
                   </button>
                 ) : (
-                  <div className="w-full py-3 bg-gray-600/50 text-gray-400 rounded-lg font-semibold text-center cursor-not-allowed">
+                  <div className="w-full py-3 bg-gray-600/50 text-gray-400 rounded-lg font-semibold text-center cursor-not-allowed text-sm md:text-base">
                     ⏳ Waiting for next semester
                   </div>
                 )}
@@ -372,34 +373,30 @@ const Profile = () => {
       )}
 
       {/* Favorites Section */}
-      <div className="activity-section glass-effect">
-        <div className="section-header">
-          <h2 className="section-title">
-            <span className="section-icon">⭐</span>
-            My Favorites
+      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 md:p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-white font-semibold text-base md:text-lg flex items-center gap-2">
+            <span className="text-xl">⭐</span> My Favorites
           </h2>
-          <button className="add-favorite-btn" onClick={() => setShowAddForm(!showAddForm)}>
-            {showAddForm ? '✕ Cancel' : '+ Add Favorite'}
+          <button 
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm transition"
+          >
+            {showAddForm ? '✕ Cancel' : '+ Add'}
           </button>
         </div>
 
         {showAddForm && (
-          <div className="add-favorite-form">
+          <div className="bg-white/5 rounded-lg p-4 mb-4 space-y-3">
             <select 
               value={newFavorite.subjectId} 
               onChange={(e) => setNewFavorite({...newFavorite, subjectId: e.target.value})} 
-              className="form-input"
+              className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm"
             >
               <option value="">Select Subject</option>
-              {subjects.length === 0 ? (
-                <option value="" disabled>Loading subjects...</option>
-              ) : (
-                subjects.map(subject => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.subject_name}
-                  </option>
-                ))
-              )}
+              {subjects.map(subject => (
+                <option key={subject.id} value={subject.id}>{subject.subject_name}</option>
+              ))}
             </select>
             
             <input 
@@ -407,35 +404,37 @@ const Profile = () => {
               placeholder="Paper Title" 
               value={newFavorite.title} 
               onChange={(e) => setNewFavorite({...newFavorite, title: e.target.value})} 
-              className="form-input" 
+              className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm"
             />
             
             <select 
               value={newFavorite.type} 
               onChange={(e) => setNewFavorite({...newFavorite, type: e.target.value})} 
-              className="form-input"
+              className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm"
             >
               <option value="Sessional">Sessional</option>
               <option value="PreUniversity">Pre-University</option>
               <option value="University">University</option>
             </select>
             
-            <button onClick={handleAddFavorite} className="save-btn">Add to Favorites</button>
+            <button onClick={handleAddFavorite} className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm">
+              Add to Favorites
+            </button>
           </div>
         )}
         
         {favorites.length === 0 ? (
-          <p className="no-data">No favorites yet. Click "Add Favorite" to add some!</p>
+          <p className="text-white/50 text-center py-8 text-sm">No favorites yet</p>
         ) : (
-          <div className="papers-list">
+          <div className="space-y-3">
             {favorites.map((favorite) => (
-              <div key={favorite.id} className="paper-item glass-card">
+              <div key={favorite.id} className="bg-white/5 rounded-lg p-3 md:p-4">
                 {editingFavorite?.id === favorite.id ? (
-                  <div className="edit-favorite-form">
+                  <div className="space-y-2">
                     <select 
                       value={editingFavorite.subjectId} 
-                      onChange={(e) => setEditingFavorite({...editingFavorite, subjectId: e.target.value, subject: getSubjectName(e.target.value)})} 
-                      className="edit-input"
+                      onChange={(e) => setEditingFavorite({...editingFavorite, subjectId: e.target.value})} 
+                      className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm"
                     >
                       {subjects.map(subject => (
                         <option key={subject.id} value={subject.id}>{subject.subject_name}</option>
@@ -445,32 +444,40 @@ const Profile = () => {
                       type="text" 
                       value={editingFavorite.title} 
                       onChange={(e) => setEditingFavorite({...editingFavorite, title: e.target.value})} 
-                      className="edit-input" 
+                      className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm"
                     />
                     <select 
                       value={editingFavorite.type} 
                       onChange={(e) => setEditingFavorite({...editingFavorite, type: e.target.value})} 
-                      className="edit-input"
+                      className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm"
                     >
                       <option value="Sessional">Sessional</option>
                       <option value="PreUniversity">Pre-University</option>
                       <option value="University">University</option>
                     </select>
-                    <div className="edit-actions">
-                      <button onClick={handleSaveFavorite} className="save-btn">Save</button>
-                      <button onClick={handleCancelEdit} className="cancel-btn">Cancel</button>
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveFavorite} className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm">Save</button>
+                      <button onClick={handleCancelEdit} className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm">Cancel</button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="paper-info">
-                      <span className="paper-title">{favorite.title}</span>
-                      <span className="paper-subject">{favorite.subject} • {favorite.type}</span>
-                      <span className="paper-date">Added: {favorite.addedOn}</span>
-                    </div>
-                    <div className="paper-actions">
-                      <button className="edit-btn-small" onClick={() => handleEditFavorite(favorite)}>✏️</button>
-                      <button className="delete-btn-small" onClick={() => handleDeleteFavorite(favorite.id)}>🗑️</button>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium text-sm md:text-base truncate">{favorite.title}</p>
+                        <p className="text-white/50 text-xs md:text-sm mt-1">
+                          {favorite.subject} • {favorite.type}
+                        </p>
+                        <p className="text-white/30 text-xs mt-1">Added: {favorite.addedOn}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => handleEditFavorite(favorite)} className="p-2 bg-blue-600/20 hover:bg-blue-600 rounded-lg text-white">
+                          ✏️
+                        </button>
+                        <button onClick={() => handleDeleteFavorite(favorite.id)} className="p-2 bg-red-600/20 hover:bg-red-600 rounded-lg text-white">
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}

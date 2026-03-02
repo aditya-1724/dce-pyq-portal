@@ -27,24 +27,124 @@ def send_otp_email(to_email, otp, name):
         "Content-Type": "application/json"
     }
     
-    html_content = f"<p>Hi {name},</p><p>Your OTP is: <strong>{otp}</strong></p><p>Valid for 10 minutes.</p>"
+  # 👇 IMPROVED HTML CONTENT
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: #f4f7fc;
+                margin: 0;
+                padding: 0;
+            }}
+            .container {{
+                max-width: 500px;
+                margin: 30px auto;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }}
+            .header {{
+                background: linear-gradient(135deg, #2563eb, #7c3aed);
+                color: white;
+                padding: 30px;
+                text-align: center;
+            }}
+            .logo {{
+                font-size: 28px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }}
+            .content {{
+                padding: 30px;
+                text-align: center;
+            }}
+            .greeting {{
+                font-size: 18px;
+                color: #1f2937;
+                margin-bottom: 20px;
+            }}
+            .otp-container {{
+                background: linear-gradient(135deg, #2563eb, #7c3aed);
+                color: white;
+                font-size: 36px;
+                font-weight: 800;
+                padding: 20px;
+                border-radius: 12px;
+                letter-spacing: 8px;
+                margin: 25px 0;
+                display: inline-block;
+                min-width: 200px;
+            }}
+            .validity {{
+                color: #6b7280;
+                font-size: 14px;
+                margin-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                padding-top: 20px;
+            }}
+            .footer {{
+                background: #f8fafc;
+                padding: 20px;
+                text-align: center;
+                color: #64748b;
+                font-size: 12px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">📚 DCE PYQ Portal</div>
+                <div style="font-size: 14px; opacity: 0.9;">Delhi College of Engineering</div>
+            </div>
+            <div class="content">
+                <div class="greeting">Hello {name},</div>
+                <div style="color: #1f2937; margin-bottom: 20px;">
+                    Welcome to DCE PYQ Portal! Please verify your email address using the OTP below:
+                </div>
+                <div class="otp-container">
+                    {otp}
+                </div>
+                <div style="color: #475569; margin-top: 10px;">
+                    This OTP is valid for 10 minutes
+                </div>
+                <div class="validity">
+                    If you didn't request this, please ignore this email.
+                </div>
+            </div>
+            <div class="footer">
+                © 2026 DCE PYQ Portal. All rights reserved.
+            </div>
+        </div>
+    </body>
+    </html>
+    """
     
     payload = {
-        "from": "DCE PYQ <onboarding@resend.dev>",
+        "from": "DCE PYQ Portal <noreply@dcepyq.com>",  # Verified domain chahiye
         "to": [to_email],
-        "subject": "DCE PYQ Portal - Email Verification OTP",
+        "subject": "🔐 Your OTP for DCE PYQ Portal",
         "html": html_content
     }
     
     try:
-        # Timeout kam karo - 5 seconds
         response = requests.post(url, json=payload, headers=headers, timeout=5)
         
         if response.status_code == 200:
+            print(f"✅ OTP sent to {to_email}")
             return True
         else:
             print(f"❌ Resend error: {response.status_code}")
             return False
+    except Exception as e:
+        print(f"❌ Resend exception: {e}")
+        return False
             
     except requests.exceptions.Timeout:
         print("❌ Resend timeout - but continuing")

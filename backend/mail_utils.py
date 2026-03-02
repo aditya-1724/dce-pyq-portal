@@ -27,7 +27,6 @@ def send_otp_email(to_email, otp, name):
         "Content-Type": "application/json"
     }
     
-  # 👇 IMPROVED HTML CONTENT
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -127,7 +126,7 @@ def send_otp_email(to_email, otp, name):
     """
     
     payload = {
-        "from": "DCE PYQ Portal <noreply@dcepyq.com>",  # Verified domain chahiye
+        "from": "DCE PYQ <onboarding@resend.dev>",
         "to": [to_email],
         "subject": "🔐 Your OTP for DCE PYQ Portal",
         "html": html_content

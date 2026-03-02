@@ -18,7 +18,7 @@ from PIL import Image
 from mail_utils import generate_otp, send_otp_email, save_otp_to_db, verify_otp_from_db
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://dce-pyq-portal.vercel.app", "http://localhost:3000"], supports_credentials=True)
 
 # ==================== JWT CONFIGURATION ====================
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dce-pyq-portal-secret-key-2026-32bytes!!')

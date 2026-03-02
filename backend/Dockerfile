@@ -1,21 +1,15 @@
 FROM python:3.10-slim
 
-WORKDIR /app
+WORKDIR /app/backend
 
-# Copy requirements and install
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all code
-COPY . .
+COPY backend/ .
 
-# Set Python path to include /app
-ENV PYTHONPATH="/app:${PYTHONPATH}"
+ENV PYTHONPATH="/app/backend:${PYTHONPATH}"
 
 EXPOSE 5000
 
-# Print debug info
-RUN echo "Current directory: $(pwd)" && ls -la
-
-# Sleep mode hatao, gunicorn se run karo
+# Direct gunicorn se run karo
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]

@@ -18,3 +18,5 @@ EXPOSE 5000
 RUN echo "Current directory: $(pwd)" && ls -la
 
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--log-level", "debug"]
+# Sleep for 1 hour instead of running gunicorn
+CMD sleep 3600

@@ -11,5 +11,5 @@ ENV PYTHONPATH="/app/backend:${PYTHONPATH}"
 
 EXPOSE 5000
 
-# Direct gunicorn se run karo
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
+# Sleep for 1 hour instead of running gunicorn
+CMD ["sleep", "3600"]

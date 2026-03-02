@@ -20,7 +20,7 @@ const Dashboard = () => {
   const token = localStorage.getItem("access_token");
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [recentPapers, setRecentPapers] = useState([]);
-  const [showSection, setShowSection] = useState(null); // 'recent', 'favorites', 'analytics'
+  const [showSection, setShowSection] = useState(null);
   const sectionRef = useRef(null);
 
   // Fetch subjects function
@@ -200,7 +200,8 @@ const Dashboard = () => {
               Welcome back, {formatName(user?.name)}! 👋
             </h1>
             
-            <div className="user-info-detailed">
+            {/* 👇 USER INFO CARDS - 2 columns on mobile */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="info-chip">
                 <span className="info-chip-icon">📚</span>
                 <div className="info-chip-content">
@@ -235,7 +236,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="stats-grid">
+          {/* 👇 STATS CARDS - Stack on mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             <div className="stat-card-modern">
               <div className="stat-icon">📚</div>
               <div className="stat-value">{subjects.length}</div>
@@ -317,7 +319,8 @@ const Dashboard = () => {
             {user?.branch} - Semester {user?.semester}
           </p>
 
-          <div className="options-grid">
+          {/* 👇 3 option buttons - mobile pe column */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             <button
               onClick={() => fetchPapers("Sessional")}
               className={`option-btn sessional ${selectedType === "Sessional" ? "active" : ""}`}
@@ -341,7 +344,7 @@ const Dashboard = () => {
           {selectedType && years.length > 0 && (
             <div className="years-section">
               <h3 className="years-title">📅 Available Years</h3>
-              <div className="years-list">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => filterByYear("all")}
                   className={`year-btn ${selectedYear === null ? "active" : ""}`}
@@ -379,10 +382,8 @@ const Dashboard = () => {
                   {selectedYear ? ` in ${selectedYear}` : ""}
                 </p>
               ) : (
-                <div className="papers-list">
+                <div className="grid grid-cols-1 gap-3">
                   {filteredPapers.map((paper) => {
-                    //const extension = paper.file_url?.split('.').pop().toUpperCase();
-                    
                     return (
                       <div key={paper.id} className="paper-item">
                         <div className="paper-info">
@@ -391,7 +392,7 @@ const Dashboard = () => {
                             <span className="paper-year">{paper.year}</span>
                           )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
                           <button
                             onClick={() => handlePreview(paper.file_url, paper)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
@@ -424,7 +425,7 @@ const Dashboard = () => {
             Welcome back, {formatName(user?.name)}! 👋
           </h1>
           
-          <div className="user-info-detailed">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="info-chip">
               <span className="info-chip-icon">📚</span>
               <div className="info-chip-content">
@@ -459,7 +460,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="stats-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <div className="stat-card-modern">
             <div className="stat-icon">📚</div>
             <div className="stat-value">{subjects.length}</div>
@@ -495,7 +496,8 @@ const Dashboard = () => {
           }}
         />
         
-        <div className="relative z-10 min-h-screen p-8 bg-black/30 backdrop-blur-md text-white">
+        {/* 👇 MAIN CONTENT - Mobile padding aur top margin */}
+        <div className="relative z-10 min-h-screen p-4 md:p-8 pt-20 md:pt-8 bg-black/30 backdrop-blur-md text-white">
           {renderContent()}
           
           {/* Dynamic Content Section - Recent, Favorites, Analytics */}

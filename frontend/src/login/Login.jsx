@@ -26,20 +26,18 @@ export default function Login() {
       console.log("📦 Login response:", data);
 
       if (data.success) {
-        // 🔥 Token aur user save hora hai yah
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
         
         console.log("✅ Login successful!");
         console.log("👤 User role:", data.user.role);
         
-        // 🔥 IMPORTANT: Redirect with window.location for hard redirect
         if (data.user.role === 'admin') {
           console.log("➡️ Redirecting to admin dashboard...");
-          window.location.href = "/admin-dashboard";  // Hard redirect
+          window.location.href = "/admin-dashboard";
         } else {
           console.log("➡️ Redirecting to student dashboard...");
-          window.location.href = "/dashboard";  // Hard redirect
+          window.location.href = "/dashboard";
         }
       } else {
         if (data.requires_verification) {
@@ -69,19 +67,23 @@ export default function Login() {
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-      <div className="relative z-10 min-h-screen flex items-center justify-between px-20">
-        <div className="text-white max-w-md">
-          <h1 className="text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
-          <p className="text-lg opacity-90">
+      {/* 👇 YEH LINE CHANGE KARO (Mobile Responsive) */}
+      <div className="relative z-10 min-h-screen flex flex-col md:flex-row items-center justify-center md:justify-between px-4 md:px-20 py-8 md:py-0">
+        
+        {/* 👇 YEH LINE CHANGE KARO (Mobile Text) */}
+        <div className="text-white max-w-md text-center md:text-left mb-8 md:mb-0">
+          <h1 className="text-3xl md:text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
+          <p className="text-base md:text-lg opacity-90 px-4 md:px-0">
             Previous Year Questions for smarter exams
           </p>
         </div>
 
-        <div className="w-full max-w-md rounded-2xl p-8 bg-white shadow-2xl">
-          <h2 className="text-3xl font-semibold mb-2 text-gray-900">
+        {/* 👇 YEH LINE CHANGE KARO (Card Padding) */}
+        <div className="w-full max-w-md rounded-2xl p-6 md:p-8 bg-white shadow-2xl">
+          <h2 className="text-2xl md:text-3xl font-semibold mb-2 text-gray-900">
             Welcome back
           </h2>
-          <p className="text-gray-600 mb-6">Login to continue</p>
+          <p className="text-sm md:text-base text-gray-600 mb-6">Login to continue</p>
 
           {msg && (
             <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
@@ -97,7 +99,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg"
+                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm md:text-base"
               />
             </div>
 
@@ -108,7 +110,7 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg"
+                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm md:text-base"
               />
             </div>
 
@@ -116,19 +118,19 @@ export default function Login() {
               type="submit"
               disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700
-              text-white py-3 rounded-lg font-medium transition disabled:opacity-50"
+              text-white py-3 rounded-lg font-medium transition disabled:opacity-50 text-sm md:text-base"
             >
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
-          <p className="text-sm text-center mt-5 text-gray-500">
+          <p className="text-xs md:text-sm text-center mt-5 text-gray-500">
             Don't have an account?{" "}
             <Link to="/signup" className="text-indigo-600 font-medium">
               Create one
             </Link>
           </p>
-          <p className="text-sm text-center mt-2">
+          <p className="text-xs md:text-sm text-center mt-2">
             <Link to="/forgot-password" className="text-indigo-600 font-medium">
               Forgot Password?
             </Link>

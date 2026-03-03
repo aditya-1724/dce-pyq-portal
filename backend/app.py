@@ -585,6 +585,7 @@ def signup():
     try:
         if not db.ensure_connection():
             return jsonify({"success": False, "message": "Database connection failed"}), 500
+            
         data = request.get_json()
         name = data.get("name")
         email = data.get("email")
@@ -594,6 +595,7 @@ def signup():
         semester = data.get("semester")
         roll_number = data.get("rollNumber")
 
+        # Validation
         if not all([name, email, password, branch, year, semester, roll_number]):
             return jsonify({"success": False, "message": "All fields required"}), 400
 
@@ -610,6 +612,7 @@ def signup():
 
         cursor = db.get_cursor()
         
+        # Check existing user
         cursor.execute("SELECT id FROM users WHERE email=%s", (email,))
         if cursor.fetchone():
             return jsonify({"success": False, "message": "Email already exists"}), 409
@@ -619,6 +622,20 @@ def signup():
         if cursor.fetchone():
             return jsonify({"success": False, "message": "Roll number already exists for this branch/year"}), 409
 
+        # 👉 PEHLE OTP GENERATE KARO
+        otp = generate_otp()
+        
+        # 👉 PHIR OTP SEND KARO
+        otp_sent = send_otp_email(email, otp, name)
+        
+        if not otp_sent:
+            print(f"❌ OTP failed for {email}")
+            return jsonify({
+                "success": False, 
+                "message": "Failed to send OTP. Please check your email or try again."
+            }), 500
+
+        # 👉 AB USER CREATE KARO (jab OTP sent ho gaya)
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
         cursor.execute("""
@@ -629,24 +646,20 @@ def signup():
         
         db.commit()
 
-        otp = generate_otp()
-        if send_otp_email(email, otp, name):
-            save_otp_to_db(email, otp)
-            return jsonify({
-                "success": True, 
-                "message": "Account created! Please verify your email with OTP.",
-                "email": email
-            }), 201
-        else:
-            return jsonify({
-                "success": False, 
-                "message": "Failed to send OTP. Please try again."
-            }), 500
+        # Save OTP to DB
+        save_otp_to_db(email, otp)
+        
+        return jsonify({
+            "success": True, 
+            "message": "Account created! Please verify your email with OTP.",
+            "email": email
+        }), 201
 
     except Exception as e:
         print("🔥 SIGNUP ERROR:", e)
-        db.rollback()
-        return jsonify({"success": False, "message": "Server error"}), 500
+        if cursor:
+            db.rollback()  # Rollback if anything fails
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
     finally:
         if cursor:
             cursor.close()

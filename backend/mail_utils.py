@@ -100,7 +100,7 @@ def send_otp_email(to_email, otp, name):
             <div class="container">
                 <div class="header">
                     <div class="logo">📚 DCE PYQ Portal</div>
-                    
+                    <div style="font-size: 14px; opacity: 0.9;">Dronacharya College of Engineering</div>
                 </div>
                 <div class="content">
                     <div class="greeting">Hello {name},</div>
@@ -120,7 +120,7 @@ def send_otp_email(to_email, otp, name):
                 <div class="footer">
                     © 2026 DCE PYQ Portal. All rights reserved.
                     <br>
-                    
+                    <small>Dronacharya College of Engineering</small>
                 </div>
             </div>
         </body>
@@ -140,7 +140,7 @@ def send_otp_email(to_email, otp, name):
         If you didn't request this, please ignore this email.
         
         © 2026 DCE PYQ Portal
-        
+        Dronacharya College of Engineering
         """
         
         # Create message
@@ -155,15 +155,18 @@ def send_otp_email(to_email, otp, name):
         
         # Send via Gmail SMTP
         print(f"📤 Sending OTP to {to_email}...")
-        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)  # 👈 Added timeout
         server.starttls()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(' ', ''))  # Remove spaces if any
+        server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(' ', ''))
         server.send_message(msg)
         server.quit()
         
         print(f"✅ OTP sent successfully to {to_email}")
         return True
         
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP error: {e}")
+        return False
     except Exception as e:
         print(f"❌ Gmail error: {e}")
         return False

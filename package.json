@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "@auth/core": "^0.34.3",
-    "next-auth": "^4.24.13"
+    "@auth/core": "^0.41.1"
   }
 }

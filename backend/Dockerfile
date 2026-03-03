@@ -11,4 +11,10 @@ ENV PYTHONPATH="/app/backend:${PYTHONPATH}"
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+# Railway environment variable se decide karo
+# RAILWAY_ENVIRONMENT=production ya development
+CMD if [ "$RAILWAY_ENVIRONMENT" = "production" ]; then \
+      python app.py; \
+    else \
+      sleep 3600; \
+    fi

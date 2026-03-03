@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import collegeImage from "../layout/college.jpg";
 
@@ -23,14 +23,19 @@ export default function AdminDashboard() {
   const token = localStorage.getItem("access_token");
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // Check if admin
-  useEffect(() => {
+  // Check if admin - using useCallback to memoize
+  const checkAdmin = useCallback(() => {
     if (!token || user?.role !== 'admin') {
       navigate("/");
     }
-  }, [navigate]);
+  }, [navigate, token, user?.role]);
 
-  const fetchSubjects = async () => {
+  useEffect(() => {
+    checkAdmin();
+  }, [checkAdmin]);
+
+  // Memoize fetch functions
+  const fetchSubjects = useCallback(async () => {
     try {
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/subjects", {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -44,9 +49,9 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error fetching subjects:", error);
     }
-  };
+  }, [token]); // ✅ Added token dependency
 
-  const fetchUniqueSubjectsCount = async () => {
+  const fetchUniqueSubjectsCount = useCallback(async () => {
     try {
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/subjects/count", {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -59,13 +64,13 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error fetching unique count:", error);
     }
-  };
+  }, [token]); // ✅ Added token dependency
 
   // Load data on mount
   useEffect(() => {
     fetchSubjects();
     fetchUniqueSubjectsCount();
-  }, []);
+  }, [fetchSubjects, fetchUniqueSubjectsCount]); // ✅ Added dependencies
 
   // Filter subjects based on branch & semester
   useEffect(() => {
@@ -79,7 +84,7 @@ export default function AdminDashboard() {
     } else {
       setFilteredSubjects([]);
     }
-  }, [selectedBranch, selectedSemester, subjects]);
+  }, [selectedBranch, selectedSemester, subjects]); // ✅ Already correct
 
   // Add Subject
   const handleAdd = async (e) => {
@@ -140,6 +145,7 @@ export default function AdminDashboard() {
     const selectedSubjectObj = subjects.find(s => s.id === parseInt(selectedSubject));
     const autoTitle = `${selectedSubjectObj?.subject_name || 'Paper'} ${paperType} ${year}`;
     formData.append("title", autoTitle);
+    
     try {
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/upload-pyq", {
         method: "POST",

@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import "./Dashboard.css";
-import { useNavigate } from "react-router-dom";  
 import collegeImage from "../layout/college.jpg";
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [papers, setPapers] = useState([]);
@@ -23,8 +21,10 @@ const Dashboard = () => {
   const [showSection, setShowSection] = useState(null);
   const sectionRef = useRef(null);
 
-  // Fetch subjects function
-  const fetchSubjects = async () => {
+  // Memoize fetchSubjects
+  const fetchSubjects = useCallback(async () => {
+    if (!user?.branch || !user?.semester || !token) return;
+    
     try {
       const res = await fetch(
         `https://dce-pyq-portal-production.up.railway.app/subjects/${user.branch}/${user.semester}`,
@@ -37,15 +37,16 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error fetching subjects:", error);
     }
-  };
+  }, [user?.branch, user?.semester, token]);
 
   // Load subjects on mount
   useEffect(() => {
     if (user?.branch && user?.semester) {
       fetchSubjects();
     }
-  }, [user?.branch, user?.semester]);
+  }, [user?.branch, user?.semester, fetchSubjects]);
 
+  // Load downloaded count
   useEffect(() => {
     const savedCount = localStorage.getItem(`downloaded_${user?.id || 'guest'}`);
     if (savedCount) {
@@ -53,8 +54,14 @@ const Dashboard = () => {
     }
   }, [user?.id]);
 
+  // Load recent papers
+  useEffect(() => {
+    const savedRecent = JSON.parse(localStorage.getItem('recent_papers') || '[]');
+    setRecentPapers(savedRecent);
+  }, []);
+
   // Handle subject selection from sidebar
-  const handleSubjectSelect = (subject) => {
+  const handleSubjectSelect = useCallback((subject) => {
     setSelectedSubject(subject);
     setSelectedType(null);
     setSelectedYear(null);
@@ -62,10 +69,12 @@ const Dashboard = () => {
     setFilteredPapers([]);
     setYears([]);
     setActiveSection("subjectView");
-  };
+  }, []);
 
-  // Fetch papers by type
-  const fetchPapers = async (type) => {
+  // Memoize fetchPapers
+  const fetchPapers = useCallback(async (type) => {
+    if (!selectedSubject?.id || !user?.branch || !user?.semester || !token) return;
+    
     setLoading(true);
     setSelectedType(type);
     setSelectedYear(null);
@@ -96,29 +105,30 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSubject?.id, user?.branch, user?.semester, token]);
 
   // Track paper view
-  const trackPaperView = (paper) => {
-    const recentPapers = JSON.parse(localStorage.getItem('recent_papers') || '[]');
-    
-    const newRecent = [
-      {
-        id: paper.id,
-        title: paper.title,
-        subject: paper.subject_name || selectedSubject?.subject_name,
-        type: paper.type,
-        viewedAt: new Date().toISOString()
-      },
-      ...recentPapers.filter(p => p.id !== paper.id)
-    ].slice(0, 5);
-    
-    localStorage.setItem('recent_papers', JSON.stringify(newRecent));
-    setRecentPapers(newRecent);
-  };
+  const trackPaperView = useCallback((paper) => {
+    setRecentPapers(prev => {
+      const newRecent = [
+        {
+          id: paper.id,
+          title: paper.title,
+          subject: paper.subject_name || selectedSubject?.subject_name,
+          type: paper.type,
+          file_url: paper.file_url,
+          viewedAt: new Date().toISOString()
+        },
+        ...prev.filter(p => p.id !== paper.id)
+      ].slice(0, 5);
+      
+      localStorage.setItem('recent_papers', JSON.stringify(newRecent));
+      return newRecent;
+    });
+  }, [selectedSubject?.subject_name]);
 
   // Filter papers by year
-  const filterByYear = (year) => {
+  const filterByYear = useCallback((year) => {
     setSelectedYear(year);
     if (year === "all") {
       setFilteredPapers(papers);
@@ -126,29 +136,31 @@ const Dashboard = () => {
       const filtered = papers.filter(p => p.year === year);
       setFilteredPapers(filtered);
     }
-  };
+  }, [papers]);
 
   // Preview - New tab mein open
-  const handlePreview = (fileUrl, paper) => {
+  const handlePreview = useCallback((fileUrl, paper) => {
     trackPaperView(paper);
     const fullUrl = `https://dce-pyq-portal-production.up.railway.app/uploads/${fileUrl}`;
     window.open(fullUrl, '_blank');
-  };
+  }, [trackPaperView]);
   
   // Download - Backend se force download
-  const handleDownload = (fileUrl, fileName, paper) => {
+  const handleDownload = useCallback((fileUrl, fileName, paper) => {
     trackPaperView(paper);
     const downloadUrl = `https://dce-pyq-portal-production.up.railway.app/download/${fileUrl}`;
     console.log("📥 Force downloading:", downloadUrl);
     window.location.href = downloadUrl;
     
-    const newCount = downloadedCount + 1;
-    setDownloadedCount(newCount);
-    localStorage.setItem(`downloaded_${user?.id || 'guest'}`, newCount.toString());
-  };
+    setDownloadedCount(prev => {
+      const newCount = prev + 1;
+      localStorage.setItem(`downloaded_${user?.id || 'guest'}`, newCount.toString());
+      return newCount;
+    });
+  }, [trackPaperView, user?.id]);
 
   // Handle back button
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setSelectedSubject(null);
     setSelectedType(null);
     setSelectedYear(null);
@@ -156,28 +168,7 @@ const Dashboard = () => {
     setFilteredPapers([]);
     setYears([]);
     setActiveSection("dashboard");
-  };
-
-  // Show recent papers
-  const showRecentPapers = (papers) => {
-    setRecentPapers(papers);
-    setShowRecentModal(true);
-  };
-
-  // Show analytics
-  const showAnalytics = () => {
-    const downloaded = parseInt(localStorage.getItem(`downloaded_${user?.id || 'guest'}`) || '0');
-    const recent = JSON.parse(localStorage.getItem('recent_papers') || '[]');
-    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    
-    alert(`
-📊 Your Progress:
-📥 Total Downloads: ${downloaded}
-🔥 Recent Views: ${recent.length}
-⭐ Favorites: ${favorites.length}
-📚 Total Subjects: ${subjects.length}
-    `);
-  };
+  }, []);
 
   // Format name
   const formatName = (name) => {
@@ -200,7 +191,6 @@ const Dashboard = () => {
               Welcome back, {formatName(user?.name)}! 👋
             </h1>
             
-            {/* 👇 USER INFO CARDS - 2 columns on mobile */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="info-chip">
                 <span className="info-chip-icon">📚</span>
@@ -236,7 +226,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* 👇 STATS CARDS - Stack on mobile */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             <div className="stat-card-modern">
               <div className="stat-icon">📚</div>
@@ -251,13 +240,11 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick Access */}
           <div className="quick-access">
             <h3 className="quick-access-title text-lg font-semibold mb-4 flex items-center gap-2">
               <span className="text-2xl">⚡</span> Quick Access
             </h3>
             <div className="grid grid-cols-3 gap-3">
-              {/* Recent Activity */}
               <div 
                 className="access-item bg-white/5 hover:bg-blue-600/20 rounded-xl p-4 text-center cursor-pointer transition-all hover:scale-105 border border-white/10 hover:border-blue-500"
                 onClick={() => {
@@ -272,7 +259,6 @@ const Dashboard = () => {
                 <span className="text-xs text-white/50">Last viewed</span>
               </div>
               
-              {/* Favorites */}
               <div 
                 className="access-item bg-white/5 hover:bg-yellow-600/20 rounded-xl p-4 text-center cursor-pointer transition-all hover:scale-105 border border-white/10 hover:border-yellow-500"
                 onClick={() => {
@@ -287,7 +273,6 @@ const Dashboard = () => {
                 <span className="text-xs text-white/50">Bookmarked</span>
               </div>
               
-              {/* Analytics */}
               <div 
                 className="access-item bg-white/5 hover:bg-purple-600/20 rounded-xl p-4 text-center cursor-pointer transition-all hover:scale-105 border border-white/10 hover:border-purple-500"
                 onClick={() => {
@@ -319,7 +304,6 @@ const Dashboard = () => {
             {user?.branch} - Semester {user?.semester}
           </p>
 
-          {/* 👇 3 option buttons - mobile pe column */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             <button
               onClick={() => fetchPapers("Sessional")}
@@ -417,64 +401,7 @@ const Dashboard = () => {
       );
     }
 
-    return (
-      <div className="content-section">
-        <div className="welcome-section">
-          <div className="user-badge">🎓 Student Dashboard</div>
-          <h1 className="welcome-title">
-            Welcome back, {formatName(user?.name)}! 👋
-          </h1>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="info-chip">
-              <span className="info-chip-icon">📚</span>
-              <div className="info-chip-content">
-                <span className="info-chip-label">Branch</span>
-                <span className="info-chip-value">{user?.branch?.toUpperCase()}</span>
-              </div>
-            </div>
-            
-            <div className="info-chip">
-              <span className="info-chip-icon">📅</span>
-              <div className="info-chip-content">
-                <span className="info-chip-label">Year</span>
-                <span className="info-chip-value">{user?.year}</span>
-              </div>
-            </div>
-            
-            <div className="info-chip">
-              <span className="info-chip-icon">📖</span>
-              <div className="info-chip-content">
-                <span className="info-chip-label">Semester</span>
-                <span className="info-chip-value">{user?.semester}</span>
-              </div>
-            </div>
-            
-            <div className="info-chip">
-              <span className="info-chip-icon">🆔</span>
-              <div className="info-chip-content">
-                <span className="info-chip-label">Roll Number</span>
-                <span className="info-chip-value">{user?.roll_number}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="stat-card-modern">
-            <div className="stat-icon">📚</div>
-            <div className="stat-value">{subjects.length}</div>
-            <div className="stat-label">Total Subjects</div>
-          </div>
-          
-          <div className="stat-card-modern">
-            <div className="stat-icon">🏆</div>
-            <div className="stat-value">{downloadedCount}</div>
-            <div className="stat-label">Papers Downloaded</div>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   };
 
   return (
@@ -496,11 +423,10 @@ const Dashboard = () => {
           }}
         />
         
-        {/* 👇 MAIN CONTENT - Mobile padding aur top margin */}
         <div className="relative z-10 min-h-screen p-4 md:p-8 pt-20 md:pt-8 bg-black/30 backdrop-blur-md text-white">
           {renderContent()}
           
-          {/* Dynamic Content Section - Recent, Favorites, Analytics */}
+          {/* Dynamic Content Section */}
           <div ref={sectionRef} className="mt-8 space-y-6">
             {/* Recent Activity Section */}
             {showSection === 'recent' && (

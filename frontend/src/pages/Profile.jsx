@@ -12,7 +12,6 @@ const Profile = () => {
   const [newFavorite, setNewFavorite] = useState({ subjectId: '', title: '', type: 'Sessional' });
   const [profilePic, setProfilePic] = useState(null);
   
-  // Flags to prevent multiple fetches
   const fetchedProfile = useRef(false);
   const fetchedSubjects = useRef(false);
   const initialLoadDone = useRef(false);
@@ -21,16 +20,14 @@ const Profile = () => {
   const token = localStorage.getItem("access_token");
   const userFromStorage = JSON.parse(localStorage.getItem("user"));
 
-  // Load user data from localStorage immediately (only once)
+  // Load user data from localStorage
   useEffect(() => {
     if (userFromStorage && !userData) {
       setUserData(userFromStorage);
     }
-  }, []); // Empty dependency - runs once
+  }, [userFromStorage, userData]);
 
-  // ==================== FETCH FUNCTIONS ====================
   const fetchUserProfile = useCallback(async () => {
-    // Prevent multiple calls
     if (fetchedProfile.current) return;
     
     try {
@@ -52,7 +49,7 @@ const Profile = () => {
       if (data.success) {
         setUserData(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
-        fetchedProfile.current = true; // Mark as fetched
+        fetchedProfile.current = true;
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -62,7 +59,6 @@ const Profile = () => {
   }, [token, navigate]);
 
   const fetchSubjects = useCallback(async () => {
-    // Don't fetch if already fetched or no user data
     if (fetchedSubjects.current || !userData?.branch || !userData?.semester) {
       return;
     }
@@ -86,7 +82,7 @@ const Profile = () => {
       
       if (Array.isArray(data)) {
         setSubjects(data);
-        fetchedSubjects.current = true; // Mark as fetched
+        fetchedSubjects.current = true;
         console.log("✅ Subjects set in state:", data.length);
       } else {
         console.log("❌ Unexpected response format:", data);
@@ -99,10 +95,8 @@ const Profile = () => {
   }, [userData?.branch, userData?.semester, token, navigate]);
 
   const fetchFavorites = useCallback(() => {
-    // Check if already have favorites
     if (favorites.length > 0) return;
     
-    // Mock data - replace with actual API call later
     setFavorites([
       { 
         id: 1, 
@@ -124,7 +118,6 @@ const Profile = () => {
   }, [favorites.length]);
 
   const loadProfilePic = useCallback(() => {
-    // Only load if not already set
     if (profilePic) return;
     
     const savedPic = localStorage.getItem("profile_pic");
@@ -133,7 +126,7 @@ const Profile = () => {
     }
   }, [profilePic]);
 
-  // Initial setup - runs only once
+  // Initial setup
   useEffect(() => {
     if (initialLoadDone.current) return;
     
@@ -147,9 +140,9 @@ const Profile = () => {
     fetchFavorites();
     loadProfilePic();
     initialLoadDone.current = true;
-  }, []); // Empty dependency array - runs ONCE only!
+  }, [token, userFromStorage, navigate, fetchUserProfile, fetchFavorites, loadProfilePic]);
 
-  // Fetch subjects when userData is available - with proper guard
+  // Fetch subjects when userData is available
   useEffect(() => {
     if (userData?.branch && userData?.semester && !fetchedSubjects.current) {
       console.log("📚 Fetching subjects for:", userData.branch, userData.semester);
@@ -157,7 +150,6 @@ const Profile = () => {
     }
   }, [userData?.branch, userData?.semester, fetchSubjects]);
 
-  // ==================== HANDLERS ====================
   const handleProfilePicChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -230,7 +222,6 @@ const Profile = () => {
       .join(" ");
   };
 
-  // ==================== UPGRADE FUNCTIONS ====================
   const checkEligibility = () => {
     if (!userData) return { eligible: false, message: "" };
     if (userData.semester >= 8) return { eligible: false, message: "Final semester completed" };
@@ -308,7 +299,6 @@ const Profile = () => {
 
   return (
     <div className="profile-container max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-      {/* Profile Header */}
       <div className="profile-header glass-effect text-center p-6 md:p-8 mb-6 rounded-2xl">
         <div className="profile-pic-container w-20 h-20 md:w-24 md:h-24 mx-auto mb-4 relative">
           {profilePic ? (
@@ -343,7 +333,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* User Info Cards - 2 columns on mobile, 4 on desktop */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 md:p-4 flex items-center gap-3">
           <span className="text-xl md:text-2xl">📚</span>
@@ -378,7 +367,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* UPGRADE SECTION */}
       {userData?.semester < 8 && (
         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6">
           <h3 className="text-white font-semibold mb-3 text-base md:text-lg">📅 Semester Progress</h3>
@@ -408,7 +396,6 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Favorites Section */}
       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 md:p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-white font-semibold text-base md:text-lg flex items-center gap-2">
@@ -504,7 +491,9 @@ const Profile = () => {
                         <p className="text-white/50 text-xs md:text-sm mt-1">
                           {favorite.subject} • {favorite.type}
                         </p>
-                        <p className="text-white/30 text-xs mt-1">Added: {favorite.addedOn}</p>
+                        <p className="text-white/30 text-xs mt-1">
+                          Subject: {getSubjectName(favorite.subjectId)} • Added: {favorite.addedOn}
+                        </p>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button onClick={() => handleEditFavorite(favorite)} className="p-2 bg-blue-600/20 hover:bg-blue-600 rounded-lg text-white">

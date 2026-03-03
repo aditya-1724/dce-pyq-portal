@@ -204,7 +204,7 @@ def home():
             "/pyqs",
             "/login",
             "/signup",
-            "/auth/google"
+            
         ]
     }), 200
 

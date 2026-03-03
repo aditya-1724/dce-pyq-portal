@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import profileBg from "../layout/college.jpg";
 import {
@@ -23,23 +23,10 @@ const Sidebar = ({ activeSection, setActiveSection, onSubjectSelect }) => {
   const token = localStorage.getItem("access_token");
   const studentName = user?.name || "Student";
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setIsMobileOpen(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (openSubjects && user?.branch && user?.semester) {
-      fetchSubjects();
-    }
-  }, [openSubjects]);
-
-  const fetchSubjects = async () => {
+  // Memoize fetchSubjects to prevent unnecessary re-renders
+  const fetchSubjects = useCallback(async () => {
+    if (!user?.branch || !user?.semester || !token) return;
+    
     setLoading(true);
     try {
       const res = await fetch(
@@ -55,7 +42,25 @@ const Sidebar = ({ activeSection, setActiveSection, onSubjectSelect }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.branch, user?.semester, token]); // ✅ Dependencies added
+
+  // Handle resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsMobileOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // No dependencies needed
+
+  // Fetch subjects when dropdown opens
+  useEffect(() => {
+    if (openSubjects && user?.branch && user?.semester) {
+      fetchSubjects();
+    }
+  }, [openSubjects, user?.branch, user?.semester, fetchSubjects]); // ✅ All dependencies added
 
   const handleSubjectClick = (subject) => {
     if (onSubjectSelect) {

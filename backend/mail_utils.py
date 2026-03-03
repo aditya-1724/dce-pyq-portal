@@ -100,7 +100,7 @@ def send_otp_email(to_email, otp, name):
             <div class="container">
                 <div class="header">
                     <div class="logo">📚 DCE PYQ Portal</div>
-                    <div style="font-size: 14px; opacity: 0.9;">Dronacharya College of Engineering</div>
+                    
                 </div>
                 <div class="content">
                     <div class="greeting">Hello {name},</div>
@@ -120,7 +120,7 @@ def send_otp_email(to_email, otp, name):
                 <div class="footer">
                     © 2026 DCE PYQ Portal. All rights reserved.
                     <br>
-                    <small>Dronacharya College of Engineering</small>
+                    
                 </div>
             </div>
         </body>
@@ -140,7 +140,7 @@ def send_otp_email(to_email, otp, name):
         If you didn't request this, please ignore this email.
         
         © 2026 DCE PYQ Portal
-        Dronacharya College of Engineering
+        
         """
         
         # Create message

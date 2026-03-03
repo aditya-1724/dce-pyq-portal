@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Profile.css";
 
@@ -12,40 +12,58 @@ const Profile = () => {
   const [newFavorite, setNewFavorite] = useState({ subjectId: '', title: '', type: 'Sessional' });
   const [profilePic, setProfilePic] = useState(null);
   
+  // Flags to prevent multiple fetches
+  const fetchedProfile = useRef(false);
+  const fetchedSubjects = useRef(false);
+  const initialLoadDone = useRef(false);
+  
   const navigate = useNavigate();
   const token = localStorage.getItem("access_token");
   const userFromStorage = JSON.parse(localStorage.getItem("user"));
 
-  // Load user data from localStorage immediately
+  // Load user data from localStorage immediately (only once)
   useEffect(() => {
-    if (userFromStorage) {
+    if (userFromStorage && !userData) {
       setUserData(userFromStorage);
     }
-  }, [userFromStorage]);
+  }, []); // Empty dependency - runs once
 
   // ==================== FETCH FUNCTIONS ====================
   const fetchUserProfile = useCallback(async () => {
+    // Prevent multiple calls
+    if (fetchedProfile.current) return;
+    
     try {
+      console.log("🔍 Fetching profile from API...");
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/profile", {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        navigate("/");
+        return;
+      }
+      
       const data = await res.json();
       console.log("👤 Profile API response:", data);
       
       if (data.success) {
         setUserData(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
+        fetchedProfile.current = true; // Mark as fetched
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, navigate]);
 
   const fetchSubjects = useCallback(async () => {
-    if (!userData?.branch || !userData?.semester) {
-      console.log("⏳ Waiting for user data...");
+    // Don't fetch if already fetched or no user data
+    if (fetchedSubjects.current || !userData?.branch || !userData?.semester) {
       return;
     }
     
@@ -55,11 +73,20 @@ const Profile = () => {
         `https://dce-pyq-portal-production.up.railway.app/subjects/${userData.branch}/${userData.semester}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
+      
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        navigate("/");
+        return;
+      }
+      
       const data = await res.json();
       console.log("📥 Subjects received:", data);
       
       if (Array.isArray(data)) {
         setSubjects(data);
+        fetchedSubjects.current = true; // Mark as fetched
         console.log("✅ Subjects set in state:", data.length);
       } else {
         console.log("❌ Unexpected response format:", data);
@@ -69,9 +96,13 @@ const Profile = () => {
       console.error("❌ Error fetching subjects:", error);
       setSubjects([]);
     }
-  }, [userData?.branch, userData?.semester, token]);
+  }, [userData?.branch, userData?.semester, token, navigate]);
 
-  const fetchFavorites = useCallback(async () => {
+  const fetchFavorites = useCallback(() => {
+    // Check if already have favorites
+    if (favorites.length > 0) return;
+    
+    // Mock data - replace with actual API call later
     setFavorites([
       { 
         id: 1, 
@@ -90,30 +121,37 @@ const Profile = () => {
         addedOn: "2024-02-18"
       },
     ]);
-  }, []);
+  }, [favorites.length]);
 
   const loadProfilePic = useCallback(() => {
+    // Only load if not already set
+    if (profilePic) return;
+    
     const savedPic = localStorage.getItem("profile_pic");
     if (savedPic) {
       setProfilePic(savedPic);
     }
-  }, []);
+  }, [profilePic]);
 
-  // Initial setup
+  // Initial setup - runs only once
   useEffect(() => {
+    if (initialLoadDone.current) return;
+    
     if (!token || !userFromStorage) {
       navigate("/");
       return;
     }
     
+    console.log("🚀 Initial load started");
     fetchUserProfile();
     fetchFavorites();
     loadProfilePic();
-  }, [token, userFromStorage, navigate, fetchUserProfile, fetchFavorites, loadProfilePic]);
+    initialLoadDone.current = true;
+  }, []); // Empty dependency array - runs ONCE only!
 
-  // Fetch subjects when userData is available
+  // Fetch subjects when userData is available - with proper guard
   useEffect(() => {
-    if (userData?.branch && userData?.semester) {
+    if (userData?.branch && userData?.semester && !fetchedSubjects.current) {
       console.log("📚 Fetching subjects for:", userData.branch, userData.semester);
       fetchSubjects();
     }
@@ -149,7 +187,7 @@ const Profile = () => {
         type: newFavorite.type,
         addedOn: new Date().toISOString().split('T')[0]
       };
-      setFavorites([...favorites, favorite]);
+      setFavorites(prev => [...prev, favorite]);
       setNewFavorite({ subjectId: '', title: '', type: 'Sessional' });
       setShowAddForm(false);
     }
@@ -161,18 +199,16 @@ const Profile = () => {
 
   const handleSaveFavorite = () => {
     if (editingFavorite) {
-      const updatedFavorites = favorites.map(f => 
-        f.id === editingFavorite.id ? editingFavorite : f
+      setFavorites(prev => 
+        prev.map(f => f.id === editingFavorite.id ? editingFavorite : f)
       );
-      setFavorites(updatedFavorites);
       setEditingFavorite(null);
     }
   };
 
   const handleDeleteFavorite = (id) => {
     if (window.confirm("Remove from favorites?")) {
-      const updatedFavorites = favorites.filter(f => f.id !== id);
-      setFavorites(updatedFavorites);
+      setFavorites(prev => prev.filter(f => f.id !== id));
     }
   };
 

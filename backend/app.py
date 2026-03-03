@@ -22,8 +22,7 @@ from mail_utils import generate_otp, send_otp_email, save_otp_to_db, verify_otp_
 app = Flask(__name__)
 CORS(app, origins=[
     "https://dce-pyq-portal.vercel.app", 
-    "http://localhost:3000",
-    "https://dce-pyq-portal-production.up.railway.app"
+    "http://localhost:3000"
 ], supports_credentials=True)
 
 # ==================== JWT CONFIGURATION ====================
@@ -221,112 +220,7 @@ def send_otp_async(email, otp, name):
         save_otp_to_db(email, otp)
 
 # ==================== GOOGLE OAUTH ROUTE ====================
-@app.route("/auth/google", methods=["POST"])
-def google_auth():
-    cursor = None
-    try:
-        if not db.ensure_connection():
-            return jsonify({"success": False, "message": "Database connection failed"}), 500
-        data = request.get_json()
-        email = data.get("email")
-        name = data.get("name")
-        google_id = data.get("googleId")
-        picture = data.get("picture")
 
-        print(f"🔍 Google login attempt: {email}")
-
-        if not email:
-            return jsonify({"success": False, "message": "Email is required"}), 400
-
-        cursor = db.get_cursor()
-        if not cursor:
-            return jsonify({"success": False, "message": "Database connection failed"}), 500
-
-        # Check if user exists
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
-
-        if not user:
-            # Create new user for Google login
-            cursor.execute("""
-                INSERT INTO users 
-                (name, email, password, role, is_verified, profile_pic, google_id, auth_provider)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                name, 
-                email, 
-                bcrypt.generate_password_hash("GOOGLE_AUTH_USER").decode('utf-8'),
-                'student', 
-                True,
-                picture,
-                google_id,
-                'google'
-            ))
-            db.commit()
-            
-            # Fetch the new user
-            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-            user = cursor.fetchone()
-            print(f"✅ New user created via Google: {email}")
-        else:
-            # Update existing user with Google info
-            cursor.execute("""
-                UPDATE users 
-                SET google_id = %s, 
-                    profile_pic = %s, 
-                    is_verified = %s,
-                    auth_provider = %s
-                WHERE email = %s
-            """, (google_id, picture, True, 'google', email))
-            db.commit()
-            print(f"✅ Existing user updated with Google: {email}")
-
-        # Generate JWT token
-        access_token = create_access_token(
-            identity=str(user['id']),
-            additional_claims={
-                'email': user['email'],
-                'role': user['role'],
-                'name': user.get('name', name),
-                'branch': user.get('branch', ''),
-                'semester': user.get('semester', '')
-            }
-        )
-
-        # Prepare user data
-        user_data = {
-            'id': user['id'],
-            'name': user.get('name', name),
-            'email': user['email'],
-            'role': user['role'],
-            'branch': user.get('branch', ''),
-            'semester': user.get('semester', ''),
-            'year': user.get('year', ''),
-            'roll_number': user.get('roll_number', ''),
-            'profile_pic': picture,
-            'is_verified': True
-        }
-
-        # Decide redirect based on role
-        redirect_url = "/admin-dashboard" if user['role'] == 'admin' else "/dashboard"
-
-        return jsonify({
-            "success": True,
-            "message": "Google login successful",
-            "user": user_data,
-            "access_token": access_token,
-            "redirect": redirect_url
-        }), 200
-
-    except Exception as e:
-        print(f"❌ Google auth error: {str(e)}")
-        traceback.print_exc()
-        if cursor:
-            db.rollback()
-        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-    finally:
-        if cursor:
-            cursor.close()
 
 # ==================== SUBJECT ROUTES ====================
 @app.route("/subjects", methods=["GET"])

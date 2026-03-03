@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
 import collegeImg from "../layout/college.jpg";
 
 export default function Login() {
@@ -9,34 +7,25 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Email/Password Login
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMsg("");
 
     try {
-      console.log("🔍 Sending login request to:", "https://dce-pyq-portal-production.up.railway.app/login");
-      
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      console.log("📦 Response status:", res.status);
-      
       const data = await res.json();
-      console.log("📦 Login response:", data);
 
       if (data.success) {
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        
-        console.log("✅ Login successful! Role:", data.user.role);
         
         if (data.user.role === 'admin') {
           window.location.href = "/admin-dashboard";
@@ -45,7 +34,6 @@ export default function Login() {
         }
       } else {
         if (data.requires_verification) {
-          console.log("📧 Verification required for:", data.email);
           navigate("/verify-otp", { 
             state: { 
               email: data.email,
@@ -58,71 +46,10 @@ export default function Login() {
       }
     } catch (error) {
       console.error("❌ Login error:", error);
-      setMsg("Failed to connect to server. Please check if backend is running.");
+      setMsg("Failed to connect to server");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Google Login Success Handler
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      setGoogleLoading(true);
-      setMsg("");
-      
-      const decoded = jwtDecode(credentialResponse.credential);
-      console.log("🔍 Google User Decoded:", decoded);
-
-      console.log("🔍 Sending to backend:", {
-        email: decoded.email,
-        name: decoded.name,
-        googleId: decoded.sub,
-        picture: decoded.picture
-      });
-
-      const res = await fetch("https://dce-pyq-portal-production.up.railway.app/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: decoded.email,
-          name: decoded.name,
-          googleId: decoded.sub,
-          picture: decoded.picture
-        }),
-      });
-
-      console.log("📦 Backend response status:", res.status);
-      
-      const data = await res.json();
-      console.log("📦 Backend response data:", data);
-
-      if (data.success) {
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        
-        console.log("✅ Google Login successful! Role:", data.user.role);
-        
-        if (data.user.role === 'admin') {
-          window.location.href = "/admin-dashboard";
-        } else {
-          window.location.href = "/dashboard";
-        }
-      } else {
-        setMsg(data.message || "Google login failed");
-        console.error("❌ Google login failed:", data.message);
-      }
-    } catch (error) {
-      console.error("❌ Google login error:", error);
-      setMsg("Failed to login with Google. Check console for details.");
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  // Google Login Error Handler
-  const handleGoogleError = (error) => {
-    console.error("❌ Google Login Error:", error);
-    setMsg("Google login failed. Please try again.");
   };
 
   return (
@@ -148,12 +75,11 @@ export default function Login() {
           <p className="text-sm md:text-base text-gray-600 mb-6">Login to continue</p>
 
           {msg && (
-            <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg whitespace-pre-wrap">
+            <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
               {msg}
             </div>
           )}
 
-          {/* Email/Password Form */}
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="text-sm text-gray-600">Email</label>
@@ -163,7 +89,6 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full mt-1 px-3 py-2 border rounded-lg text-sm md:text-base"
-                disabled={loading || googleLoading}
               />
             </div>
 
@@ -175,49 +100,18 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full mt-1 px-3 py-2 border rounded-lg text-sm md:text-base"
-                disabled={loading || googleLoading}
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading || googleLoading}
+              disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700
-              text-white py-3 rounded-lg font-medium transition disabled:opacity-50 text-sm md:text-base mb-4"
+              text-white py-3 rounded-lg font-medium transition disabled:opacity-50 text-sm md:text-base"
             >
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
-
-          {/* Google Login Button */}
-          <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              useOneTap
-              theme="filled_blue"
-              shape="rectangular"
-              size="large"
-              text="signin_with"
-              disabled={loading || googleLoading}
-            />
-          </div>
-
-          {googleLoading && (
-            <p className="text-sm text-center mt-3 text-gray-600">
-              Processing Google login...
-            </p>
-          )}
 
           <p className="text-xs md:text-sm text-center mt-5 text-gray-500">
             Don't have an account?{" "}

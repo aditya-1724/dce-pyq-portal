@@ -11,4 +11,3 @@ reportlab==4.2.5
 requests==2.31.0
 Pillow==11.1.0
 cryptography==42.0.5
-pymysql==1.1.2

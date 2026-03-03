@@ -13,12 +13,12 @@ export default function Signup() {
     rollNumber: ""
   });
   const [errors, setErrors] = useState({});
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState({ type: "", text: "" }); // 👈 Changed to object
   const [loading, setLoading] = useState(false);
   const [semesterOptions, setSemesterOptions] = useState([]);
   const navigate = useNavigate();
 
-  // 👇 Semester options based on year
+  // Semester options based on year
   useEffect(() => {
     if (formData.year) {
       const yearNum = parseInt(formData.year);
@@ -34,7 +34,6 @@ export default function Signup() {
     } else {
       setSemesterOptions([]);
     }
-    // Reset semester when year changes
     setFormData(prev => ({ ...prev, semester: "" }));
   }, [formData.year]);
 
@@ -53,43 +52,28 @@ export default function Signup() {
     return re.test(email);
   };
 
-  // 👇 Roll number validation - must start with 2 and be 5 digits
   const validateRollNumber = (roll) => {
     const rollStr = String(roll);
-    return /^2\d{4}$/.test(rollStr); // 5 digits starting with 2
+    return /^2\d{4}$/.test(rollStr);
   };
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
+    if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!validateEmail(formData.email)) {
       newErrors.email = "Invalid email format";
     }
-
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
     }
-
-    if (!formData.branch) {
-      newErrors.branch = "Please select branch";
-    }
-
-    if (!formData.year) {
-      newErrors.year = "Please select year";
-    }
-
-    if (!formData.semester) {
-      newErrors.semester = "Please select semester";
-    }
-
+    if (!formData.branch) newErrors.branch = "Please select branch";
+    if (!formData.year) newErrors.year = "Please select year";
+    if (!formData.semester) newErrors.semester = "Please select semester";
     if (!formData.rollNumber) {
       newErrors.rollNumber = "Roll number is required";
     } else if (!/^\d+$/.test(formData.rollNumber)) {
@@ -110,9 +94,11 @@ export default function Signup() {
     }
 
     setLoading(true);
-    setMsg("");
+    setMsg({ type: "", text: "" });
 
     try {
+      console.log("📤 Sending signup request:", formData);
+      
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,20 +109,35 @@ export default function Signup() {
       });
 
       const data = await res.json();
+      console.log("📦 Backend response:", data); // 👈 CHECK THIS IN CONSOLE
 
       if (data.success) {
-        // 👇 Redirect to OTP verification
-        navigate("/verify-otp", { 
-          state: { 
-            email: formData.email,
-            message: "Account created! Please verify your email with OTP."
-          } 
+        // ✅ Success - redirect to OTP
+        setMsg({ 
+          type: "success", 
+          text: "Account created! Redirecting to OTP verification..." 
         });
+        setTimeout(() => {
+          navigate("/verify-otp", { 
+            state: { 
+              email: formData.email,
+              message: "OTP sent to your email! Please verify."
+            } 
+          });
+        }, 1500);
       } else {
-        setMsg(data.message || "Signup failed");
+        // ❌ Error from backend
+        setMsg({ 
+          type: "error", 
+          text: data.message || "Signup failed. Please try again." 
+        });
       }
     } catch (error) {
-      setMsg("Failed to connect to server");
+      console.error("❌ Network error:", error);
+      setMsg({ 
+        type: "error", 
+        text: "Failed to connect to server. Please check your internet connection." 
+      });
     } finally {
       setLoading(false);
     }
@@ -149,10 +150,8 @@ export default function Signup() {
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-      {/* 👇 MOBILE FRIENDLY CONTAINER */}
       <div className="relative z-10 min-h-screen flex flex-col md:flex-row items-center justify-center md:justify-between px-4 md:px-20 py-8 md:py-0">
         
-        {/* Left Text - Mobile pe upar, Desktop pe left */}
         <div className="text-white max-w-md text-center md:text-left mb-6 md:mb-0">
           <h1 className="text-3xl md:text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
           <p className="text-sm md:text-lg opacity-90 px-4 md:px-0">
@@ -160,15 +159,21 @@ export default function Signup() {
           </p>
         </div>
 
-        {/* Signup Card - Mobile full width with scroll */}
         <div className="w-full max-w-md rounded-2xl p-5 md:p-8 bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
           <h2 className="text-2xl md:text-3xl font-semibold mb-2 text-gray-900">
             Create Account
           </h2>
 
-          {msg && (
-            <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-              {msg}
+          {/* Message Display - with proper styling */}
+          {msg.text && (
+            <div
+              className={`mb-4 p-3 rounded-lg text-sm ${
+                msg.type === "success"
+                  ? "bg-green-50 text-green-700 border border-green-200"
+                  : "bg-red-50 text-red-700 border border-red-200"
+              }`}
+            >
+              {msg.text}
             </div>
           )}
 
@@ -253,7 +258,6 @@ export default function Signup() {
 
             {/* Year & Semester Grid */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Year Field */}
               <div>
                 <label className="text-xs md:text-sm text-gray-600">Year</label>
                 <select
@@ -275,7 +279,6 @@ export default function Signup() {
                 )}
               </div>
 
-              {/* Semester Field - Dynamic based on year */}
               <div>
                 <label className="text-xs md:text-sm text-gray-600">Semester</label>
                 <select

@@ -1,6 +1,6 @@
 import os
 import io
-import pymysql  # 👈 Railway ke liye pymysql
+import pymysql
 from datetime import datetime, timedelta
 import threading
 from werkzeug.utils import secure_filename
@@ -14,12 +14,17 @@ from docx import Document
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PIL import Image
+import traceback
 
 # Import mail functions
 from mail_utils import generate_otp, send_otp_email, save_otp_to_db, verify_otp_from_db
 
 app = Flask(__name__)
-CORS(app, origins=["https://dce-pyq-portal.vercel.app", "http://localhost:3000"], supports_credentials=True)
+CORS(app, origins=[
+    "https://dce-pyq-portal.vercel.app", 
+    "http://localhost:3000",
+    "https://dce-pyq-portal-production.up.railway.app"
+], supports_credentials=True)
 
 # ==================== JWT CONFIGURATION ====================
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dce-pyq-portal-secret-key-2026-32bytes!!')
@@ -119,13 +124,15 @@ def validate_email(email):
 def home():
     return jsonify({
         "message": "DCE PYQ Portal API",
+        "college": "Dronacharya College of Engineering",
         "status": "running",
         "endpoints": [
             "/health",
             "/subjects",
             "/pyqs",
             "/login",
-            "/signup"
+            "/signup",
+            "/auth/google"
         ]
     }), 200
 
@@ -134,13 +141,118 @@ def send_otp_async(email, otp, name):
     """Background mein OTP bhejo"""
     try:
         from mail_utils import send_otp_email, save_otp_to_db
-        # Timeout ke case mein bhi OTP save karo
         send_otp_email(email, otp, name)
         save_otp_to_db(email, otp)
     except Exception as e:
         print(f"❌ Background OTP error: {e}")
-        # Error par bhi OTP save karo taaki user verify kar sake
         save_otp_to_db(email, otp)
+
+# ==================== GOOGLE OAUTH ROUTE ====================
+@app.route("/auth/google", methods=["POST"])
+def google_auth():
+    cursor = None
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        name = data.get("name")
+        google_id = data.get("googleId")
+        picture = data.get("picture")
+
+        print(f"🔍 Google login attempt: {email}")
+
+        if not email:
+            return jsonify({"success": False, "message": "Email is required"}), 400
+
+        cursor = db.get_cursor()
+        if not cursor:
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
+
+        # Check if user exists
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            # Create new user for Google login
+            cursor.execute("""
+                INSERT INTO users 
+                (name, email, password, role, is_verified, profile_pic, google_id, auth_provider)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                name, 
+                email, 
+                bcrypt.generate_password_hash("GOOGLE_AUTH_USER").decode('utf-8'),
+                'student', 
+                True,
+                picture,
+                google_id,
+                'google'
+            ))
+            db.commit()
+            
+            # Fetch the new user
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            print(f"✅ New user created via Google: {email}")
+        else:
+            # Update existing user with Google info
+            cursor.execute("""
+                UPDATE users 
+                SET google_id = %s, 
+                    profile_pic = %s, 
+                    is_verified = %s,
+                    auth_provider = %s
+                WHERE email = %s
+            """, (google_id, picture, True, 'google', email))
+            db.commit()
+            print(f"✅ Existing user updated with Google: {email}")
+
+        # Generate JWT token
+        access_token = create_access_token(
+            identity=str(user['id']),
+            additional_claims={
+                'email': user['email'],
+                'role': user['role'],
+                'name': user.get('name', name),
+                'branch': user.get('branch', ''),
+                'semester': user.get('semester', '')
+            }
+        )
+
+        # Prepare user data
+        user_data = {
+            'id': user['id'],
+            'name': user.get('name', name),
+            'email': user['email'],
+            'role': user['role'],
+            'branch': user.get('branch', ''),
+            'semester': user.get('semester', ''),
+            'year': user.get('year', ''),
+            'roll_number': user.get('roll_number', ''),
+            'profile_pic': picture,
+            'is_verified': True
+        }
+
+        # Decide redirect based on role
+        redirect_url = "/admin-dashboard" if user['role'] == 'admin' else "/dashboard"
+
+        return jsonify({
+            "success": True,
+            "message": "Google login successful",
+            "user": user_data,
+            "access_token": access_token,
+            "redirect": redirect_url
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Google auth error: {str(e)}")
+        traceback.print_exc()
+        if cursor:
+            db.rollback()
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+
 # ==================== SUBJECT ROUTES ====================
 @app.route("/subjects", methods=["GET"])
 @jwt_required()
@@ -269,7 +381,6 @@ def get_pyqs(subject_id, branch, semester):
         
         papers = cursor.fetchall()
         
-        # Sirf filename bhejo
         for paper in papers:
             if paper['file_url']:
                 filename = paper['file_url'].split('/')[-1]
@@ -338,7 +449,6 @@ def upload_pyq():
         if not title:
             title = f"{subject_name} {paper_type} {year}"
 
-        # Clean subject name for filename
         subject_name_clean = subject_name.replace(" ", "_")
         subject_name_clean = re.sub(r'[<>:"/\\|?*]', '', subject_name_clean)
         
@@ -715,7 +825,6 @@ def forgot_password():
 
         otp = generate_otp()
         
-        # 🔥 Background thread mein OTP bhejo
         thread = threading.Thread(target=send_otp_async, args=(email, otp, user['name']))
         thread.start()
         
@@ -833,7 +942,7 @@ def get_profile():
             print("🔥 Database cursor is None - connection failed")
             return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor.execute("""
-            SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified
+            SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified, profile_pic
             FROM users WHERE id=%s
         """, (current_user_id,))
         
@@ -890,12 +999,77 @@ def get_all_users():
     cursor = None
     try:
         cursor = db.get_cursor()
-        cursor.execute("SELECT id, name, email, branch, year, semester, role, created_at, is_verified FROM users ORDER BY created_at DESC")
+        cursor.execute("""
+            SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified 
+            FROM users ORDER BY created_at DESC
+        """)
         users = cursor.fetchall()
         return jsonify({"success": True, "users": users}), 200
         
     except Exception as e:
         print("🔥 GET USERS ERROR:", e)
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+
+@app.route("/user/<int:id>", methods=["GET"])
+@jwt_required()
+def get_user(id):
+    cursor = None
+    try:
+        cursor = db.get_cursor()
+        cursor.execute("""
+            SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified 
+            FROM users WHERE id=%s
+        """, (id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+            
+        return jsonify({"success": True, "user": user}), 200
+        
+    except Exception as e:
+        print("🔥 GET USER ERROR:", e)
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+
+@app.route("/update-user/<int:id>", methods=["PUT"])
+@jwt_required()
+def update_user(id):
+    cursor = None
+    try:
+        data = request.get_json()
+        name = data.get("name")
+        email = data.get("email")
+        branch = data.get("branch")
+        year = data.get("year")
+        semester = data.get("semester")
+        roll_number = data.get("roll_number")
+        role = data.get("role")
+
+        cursor = db.get_cursor()
+        
+        # Check if email exists for other users
+        cursor.execute("SELECT id FROM users WHERE email=%s AND id!=%s", (email, id))
+        if cursor.fetchone():
+            return jsonify({"success": False, "message": "Email already exists"}), 409
+
+        cursor.execute("""
+            UPDATE users 
+            SET name=%s, email=%s, branch=%s, year=%s, semester=%s, roll_number=%s, role=%s
+            WHERE id=%s
+        """, (name, email, branch, year, semester, roll_number, role, id))
+        
+        db.commit()
+        return jsonify({"success": True, "message": "User updated successfully"}), 200
+        
+    except Exception as e:
+        print("🔥 UPDATE USER ERROR:", e)
+        db.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
     finally:
         if cursor:
@@ -924,6 +1098,61 @@ def delete_user(id):
         if cursor:
             cursor.close()
 
+# ==================== OTP TABLE CREATION ====================
+@app.route("/init-db", methods=["GET"])
+def init_db():
+    cursor = None
+    try:
+        cursor = db.get_cursor()
+        
+        # Create OTP table if not exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS otp_verification (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) NOT NULL,
+                otp VARCHAR(6) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_email (email),
+                INDEX idx_expires (expires_at)
+            )
+        """)
+        
+        # Add new columns to users table if not exists
+        try:
+            cursor.execute("SHOW COLUMNS FROM users LIKE 'google_id'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE users ADD COLUMN google_id VARCHAR(200) NULL UNIQUE")
+                print("✅ Added google_id column")
+        except Exception as e:
+            print(f"⚠️ google_id column check: {e}")
+            
+        try:
+            cursor.execute("SHOW COLUMNS FROM users LIKE 'profile_pic'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE users ADD COLUMN profile_pic VARCHAR(500) NULL")
+                print("✅ Added profile_pic column")
+        except Exception as e:
+            print(f"⚠️ profile_pic column check: {e}")
+            
+        try:
+            cursor.execute("SHOW COLUMNS FROM users LIKE 'auth_provider'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'email'")
+                print("✅ Added auth_provider column")
+        except Exception as e:
+            print(f"⚠️ auth_provider column check: {e}")
+        
+        db.commit()
+        return jsonify({"success": True, "message": "Database initialized successfully"}), 200
+        
+    except Exception as e:
+        print("🔥 INIT DB ERROR:", e)
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+
 # ==================== FILE SERVING ====================
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
@@ -936,9 +1165,22 @@ def uploaded_file(filename):
 # ==================== HEALTH CHECK ====================
 @app.route("/health", methods=["GET"])
 def health_check():
+    cursor = None
+    try:
+        cursor = db.get_cursor()
+        cursor.execute("SELECT 1")
+        db_status = "connected"
+    except:
+        db_status = "disconnected"
+    finally:
+        if cursor:
+            cursor.close()
+    
     return jsonify({
         "status": "healthy",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "database": db_status,
+        "environment": os.environ.get('RAILWAY_ENVIRONMENT', 'development')
     }), 200
 
 # ==================== ERROR HANDLERS ====================
@@ -958,4 +1200,32 @@ def expired_token_response(jwt_header, jwt_payload):
 if __name__ == "__main__":
     import os
     port = int(os.environ.get('PORT', 5000))
+    
+    # Initialize database on startup
+    with app.app_context():
+        try:
+            # Try to initialize DB
+            cursor = db.get_cursor()
+            if cursor:
+                cursor.execute("SHOW TABLES LIKE 'otp_verification'")
+                if not cursor.fetchone():
+                    print("📦 Creating OTP verification table...")
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS otp_verification (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            email VARCHAR(255) NOT NULL,
+                            otp VARCHAR(6) NOT NULL,
+                            expires_at DATETIME NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            INDEX idx_email (email),
+                            INDEX idx_expires (expires_at)
+                        )
+                    """)
+                    db.commit()
+                    print("✅ OTP table created")
+                cursor.close()
+        except Exception as e:
+            print(f"⚠️ Startup DB init warning: {e}")
+    
+    print(f"🚀 Server starting on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)

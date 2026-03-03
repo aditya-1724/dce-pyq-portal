@@ -10,7 +10,7 @@ db = pymysql.connect(
     host=os.environ.get('MYSQLHOST', 'localhost'),
     user=os.environ.get('MYSQLUSER', 'root'),
     password=os.environ.get('MYSQLPASSWORD', 'adi24niki'),
-    database=os.environ.get('MYSQLDATABASE', 'college_pyq'),
+    database=os.environ.get('MYSQLDATABASE', 'railway'),
     port=int(os.environ.get('MYSQLPORT', 3306)),
     cursorclass=pymysql.cursors.DictCursor
 )

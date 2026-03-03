@@ -39,8 +39,10 @@ class Database:
     def __init__(self):
         self.connection = None
         self.connect()
+        self.pool_size = 5  # Connection pool size
     
     def connect(self):
+        """Create database connection"""
         try:
             self.connection = pymysql.connect(
                 host=os.environ.get('MYSQLHOST', 'localhost'),
@@ -50,9 +52,11 @@ class Database:
                 port=int(os.environ.get('MYSQLPORT', 3306)),
                 cursorclass=pymysql.cursors.DictCursor,
                 autocommit=False,
-                connect_timeout=10,
-                read_timeout=30,
-                write_timeout=30
+                connect_timeout=30,        # Increased from 10
+                read_timeout=60,            # Added
+                write_timeout=60,           # Added
+                charset='utf8mb4',
+                use_unicode=True
             )
             print("✅ Database connected successfully")
             return True
@@ -61,18 +65,76 @@ class Database:
             self.connection = None
             return False
     
-    def get_cursor(self):
+    def ensure_connection(self):
+        """Make sure connection is alive before queries"""
         try:
             if not self.connection or not self.connection.open:
                 print("🔄 Reconnecting to database...")
-                if not self.connect():
-                    return None
+                return self.connect()
+            
+            # Test connection with ping
+            self.connection.ping(reconnect=True)
+            return True
+        except Exception as e:
+            print(f"⚠️ Connection lost, reconnecting... {e}")
+            return self.connect()
+    
+    def get_cursor(self):
+        """Get cursor with automatic reconnection"""
+        try:
+            if not self.ensure_connection():
+                return None
             return self.connection.cursor()
         except Exception as e:
             print(f"❌ Cursor error: {e}")
             return None
     
+    def execute_query(self, query, params=None, fetch_one=False, fetch_all=False, commit=False):
+        """Execute query with automatic retry on connection loss"""
+        cursor = None
+        try:
+            cursor = self.get_cursor()
+            if not cursor:
+                return None
+            
+            cursor.execute(query, params or ())
+            
+            result = None
+            if fetch_one:
+                result = cursor.fetchone()
+            elif fetch_all:
+                result = cursor.fetchall()
+            
+            if commit:
+                self.commit()
+            
+            return result
+            
+        except (pymysql.OperationalError, pymysql.InterfaceError) as e:
+            print(f"⚠️ Database error, retrying... {e}")
+            # Try once more with new connection
+            self.connection = None
+            cursor = self.get_cursor()
+            if cursor:
+                cursor.execute(query, params or ())
+                if fetch_one:
+                    return cursor.fetchone()
+                elif fetch_all:
+                    return cursor.fetchall()
+                if commit:
+                    self.commit()
+        except Exception as e:
+            print(f"❌ Query error: {e}")
+            if commit:
+                self.rollback()
+        finally:
+            if cursor:
+                cursor.close()
+        
+        return None if not fetch_one and not fetch_all else None
+    
     def commit(self):
+        """Commit transaction"""
         try:
             if self.connection and self.connection.open:
                 self.connection.commit()
@@ -82,6 +144,7 @@ class Database:
             return False
     
     def rollback(self):
+        """Rollback transaction"""
         try:
             if self.connection and self.connection.open:
                 self.connection.rollback()
@@ -89,6 +152,16 @@ class Database:
         except Exception as e:
             print(f"❌ Rollback error: {e}")
             return False
+    
+    def close(self):
+        """Close connection"""
+        try:
+            if self.connection and self.connection.open:
+                self.connection.close()
+                print("🔌 Database connection closed")
+        except Exception as e:
+            print(f"❌ Close error: {e}")
+
 
 # Create global database instance
 db = Database()
@@ -152,6 +225,8 @@ def send_otp_async(email, otp, name):
 def google_auth():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         email = data.get("email")
         name = data.get("name")
@@ -259,6 +334,8 @@ def google_auth():
 def get_all_subjects():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("SELECT * FROM subjects ORDER BY branch, semester, subject_name")
         subjects = cursor.fetchall()
@@ -275,6 +352,8 @@ def get_all_subjects():
 def get_subjects(branch, semester):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         current_user = get_jwt_identity()
         print(f"👤 User ID: {current_user} accessing subjects for {branch} Sem {semester}")
         
@@ -297,6 +376,8 @@ def get_subjects(branch, semester):
 def get_unique_subjects_count():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("SELECT COUNT(DISTINCT subject_name) as count FROM subjects")
         result = cursor.fetchone()
@@ -313,6 +394,8 @@ def get_unique_subjects_count():
 def add_subject():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         subject_name = data.get("subject_name")
         branch = data.get("branch")
@@ -348,6 +431,8 @@ def add_subject():
 def delete_subject(id):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("SELECT id FROM pyqs WHERE subject_id=%s", (id,))
         if cursor.fetchone():
@@ -370,6 +455,8 @@ def delete_subject(id):
 def get_pyqs(subject_id, branch, semester):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("""
             SELECT p.*, s.subject_name 
@@ -399,6 +486,8 @@ def get_pyqs(subject_id, branch, semester):
 def get_all_pyqs():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("""
             SELECT p.*, s.subject_name 
@@ -426,6 +515,8 @@ def get_all_pyqs():
 def upload_pyq():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         subject_id = request.form.get("subject_id")
         paper_type = request.form.get("type")
         title = request.form.get("title")
@@ -547,6 +638,8 @@ def convert_image_to_pdf(image_path, pdf_path):
 def delete_pyq(id):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("SELECT file_url FROM pyqs WHERE id=%s", (id,))
         pyq = cursor.fetchone()
@@ -571,6 +664,8 @@ def delete_pyq(id):
 @app.route("/download/<path:filename>")
 def download_file(filename):
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         if '..' in filename or filename.startswith('/'):
             return jsonify({"success": False, "message": "Invalid filename"}), 400
             
@@ -594,6 +689,8 @@ def download_file(filename):
 def signup():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         name = data.get("name")
         email = data.get("email")
@@ -664,6 +761,8 @@ def signup():
 def verify_otp():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         email = data.get("email")
         otp = data.get("otp")
@@ -697,6 +796,8 @@ def verify_otp():
 def resend_otp():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         email = data.get("email")
 
@@ -731,6 +832,8 @@ def resend_otp():
 def login():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         email = data.get("email")
         password = data.get("password")
@@ -810,6 +913,8 @@ def login():
 def forgot_password():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         email = data.get("email")
 
@@ -845,6 +950,8 @@ def forgot_password():
 def reset_password_with_otp():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         email = data.get("email")
         otp = data.get("otp")
@@ -881,6 +988,8 @@ def reset_password_with_otp():
 def upgrade_semester():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         user_id = data.get("userId")
         current_semester = data.get("currentSemester")
@@ -935,6 +1044,8 @@ def upgrade_semester():
 def get_profile():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         current_user_id = get_jwt_identity()
         
         cursor = db.get_cursor()
@@ -966,6 +1077,8 @@ def get_profile():
 def get_admin_stats():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("SELECT COUNT(*) as total FROM users")
         total_users = cursor.fetchone()['total']
@@ -998,6 +1111,8 @@ def get_admin_stats():
 def get_all_users():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("""
             SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified 
@@ -1018,6 +1133,8 @@ def get_all_users():
 def get_user(id):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("""
             SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified 
@@ -1042,6 +1159,8 @@ def get_user(id):
 def update_user(id):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         data = request.get_json()
         name = data.get("name")
         email = data.get("email")
@@ -1080,6 +1199,8 @@ def update_user(id):
 def delete_user(id):
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         current_user_id = get_jwt_identity()
         if int(current_user_id) == id:
             return jsonify({"success": False, "message": "Cannot delete your own account"}), 400
@@ -1103,6 +1224,8 @@ def delete_user(id):
 def init_db():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         
         # Create OTP table if not exists
@@ -1157,6 +1280,8 @@ def init_db():
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
     except Exception as e:
         print("🔥 FILE SERVE ERROR:", e)
@@ -1167,6 +1292,8 @@ def uploaded_file(filename):
 def health_check():
     cursor = None
     try:
+        if not db.ensure_connection():
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
         cursor = db.get_cursor()
         cursor.execute("SELECT 1")
         db_status = "connected"

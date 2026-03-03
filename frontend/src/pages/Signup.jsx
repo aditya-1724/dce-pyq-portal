@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import collegeImg from "../layout/college.jpg";
 
@@ -15,7 +15,28 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [semesterOptions, setSemesterOptions] = useState([]);
   const navigate = useNavigate();
+
+  // 👇 Semester options based on year
+  useEffect(() => {
+    if (formData.year) {
+      const yearNum = parseInt(formData.year);
+      if (yearNum === 1) {
+        setSemesterOptions([1, 2]);
+      } else if (yearNum === 2) {
+        setSemesterOptions([3, 4]);
+      } else if (yearNum === 3) {
+        setSemesterOptions([5, 6]);
+      } else if (yearNum === 4) {
+        setSemesterOptions([7, 8]);
+      }
+    } else {
+      setSemesterOptions([]);
+    }
+    // Reset semester when year changes
+    setFormData(prev => ({ ...prev, semester: "" }));
+  }, [formData.year]);
 
   const handleChange = (e) => {
     setFormData({
@@ -30,6 +51,12 @@ export default function Signup() {
   const validateEmail = (email) => {
     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return re.test(email);
+  };
+
+  // 👇 Roll number validation - must start with 2 and be 5 digits
+  const validateRollNumber = (roll) => {
+    const rollStr = String(roll);
+    return /^2\d{4}$/.test(rollStr); // 5 digits starting with 2
   };
 
   const validateForm = () => {
@@ -67,6 +94,8 @@ export default function Signup() {
       newErrors.rollNumber = "Roll number is required";
     } else if (!/^\d+$/.test(formData.rollNumber)) {
       newErrors.rollNumber = "Roll number must contain only numbers";
+    } else if (!validateRollNumber(formData.rollNumber)) {
+      newErrors.rollNumber = "Roll number must be 5 digits starting with 2 (e.g., 2XXXX)";
     }
 
     setErrors(newErrors);
@@ -96,6 +125,7 @@ export default function Signup() {
       const data = await res.json();
 
       if (data.success) {
+        // 👇 Redirect to OTP verification
         navigate("/verify-otp", { 
           state: { 
             email: formData.email,
@@ -126,7 +156,7 @@ export default function Signup() {
         <div className="text-white max-w-md text-center md:text-left mb-6 md:mb-0">
           <h1 className="text-3xl md:text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
           <p className="text-sm md:text-lg opacity-90 px-4 md:px-0">
-            Previous Year Questions for smarter exams
+            Dronacharya College of Engineering
           </p>
         </div>
 
@@ -245,20 +275,21 @@ export default function Signup() {
                 )}
               </div>
 
-              {/* Semester Field */}
+              {/* Semester Field - Dynamic based on year */}
               <div>
                 <label className="text-xs md:text-sm text-gray-600">Semester</label>
                 <select
                   name="semester"
                   value={formData.semester}
                   onChange={handleChange}
+                  disabled={!formData.year}
                   className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                     errors.semester ? 'border-red-500' : ''
-                  }`}
+                  } ${!formData.year ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
                   <option value="">Sem</option>
-                  {[1,2,3,4,5,6,7,8].map(num => (
-                    <option key={num} value={num}>{num}</option>
+                  {semesterOptions.map(num => (
+                    <option key={num} value={num}>Semester {num}</option>
                   ))}
                 </select>
                 {errors.semester && (
@@ -269,19 +300,23 @@ export default function Signup() {
 
             {/* Roll Number Field */}
             <div>
-              <label className="text-xs md:text-sm text-gray-600">Roll Number</label>
+              <label className="text-xs md:text-sm text-gray-600">Roll Number (5 digits starting with 2)</label>
               <input
                 type="text"
                 name="rollNumber"
                 value={formData.rollNumber}
                 onChange={handleChange}
-                placeholder="Enter your Roll Number"
+                placeholder="e.g., 20123"
+                maxLength="5"
                 className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.rollNumber ? 'border-red-500' : ''
                 }`}
               />
               {errors.rollNumber && (
                 <p className="text-red-500 text-xs mt-1">{errors.rollNumber}</p>
+              )}
+              {formData.rollNumber && !errors.rollNumber && (
+                <p className="text-green-600 text-xs mt-1">✓ Valid roll number</p>
               )}
             </div>
 

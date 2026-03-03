@@ -12,20 +12,23 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Email/Password Login (Tumhara existing code)
+  // Email/Password Login
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMsg("");
 
     try {
-      console.log("🔍 Sending login request...");
+      console.log("🔍 Sending login request to:", "https://dce-pyq-portal-production.up.railway.app/login");
+      
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
+      console.log("📦 Response status:", res.status);
+      
       const data = await res.json();
       console.log("📦 Login response:", data);
 
@@ -33,19 +36,16 @@ export default function Login() {
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
         
-        console.log("✅ Login successful!");
-        console.log("👤 User role:", data.user.role);
+        console.log("✅ Login successful! Role:", data.user.role);
         
         if (data.user.role === 'admin') {
-          console.log("➡️ Redirecting to admin dashboard...");
           window.location.href = "/admin-dashboard";
         } else {
-          console.log("➡️ Redirecting to student dashboard...");
           window.location.href = "/dashboard";
         }
       } else {
         if (data.requires_verification) {
-          console.log("📧 Verification required");
+          console.log("📧 Verification required for:", data.email);
           navigate("/verify-otp", { 
             state: { 
               email: data.email,
@@ -58,7 +58,7 @@ export default function Login() {
       }
     } catch (error) {
       console.error("❌ Login error:", error);
-      setMsg("Failed to connect to server");
+      setMsg("Failed to connect to server. Please check if backend is running.");
     } finally {
       setLoading(false);
     }
@@ -68,10 +68,18 @@ export default function Login() {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       setGoogleLoading(true);
+      setMsg("");
+      
       const decoded = jwtDecode(credentialResponse.credential);
-      console.log("Google User:", decoded);
+      console.log("🔍 Google User Decoded:", decoded);
 
-      // Google user ko backend bhejo
+      console.log("🔍 Sending to backend:", {
+        email: decoded.email,
+        name: decoded.name,
+        googleId: decoded.sub,
+        picture: decoded.picture
+      });
+
       const res = await fetch("https://dce-pyq-portal-production.up.railway.app/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,15 +91,17 @@ export default function Login() {
         }),
       });
 
+      console.log("📦 Backend response status:", res.status);
+      
       const data = await res.json();
+      console.log("📦 Backend response data:", data);
 
       if (data.success) {
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
         
-        console.log("✅ Google Login successful!");
+        console.log("✅ Google Login successful! Role:", data.user.role);
         
-        // Redirect based on role
         if (data.user.role === 'admin') {
           window.location.href = "/admin-dashboard";
         } else {
@@ -99,18 +109,19 @@ export default function Login() {
         }
       } else {
         setMsg(data.message || "Google login failed");
+        console.error("❌ Google login failed:", data.message);
       }
     } catch (error) {
-      console.error("Google login error:", error);
-      setMsg("Failed to login with Google");
+      console.error("❌ Google login error:", error);
+      setMsg("Failed to login with Google. Check console for details.");
     } finally {
       setGoogleLoading(false);
     }
   };
 
   // Google Login Error Handler
-  const handleGoogleError = () => {
-    console.log("Google Login Failed");
+  const handleGoogleError = (error) => {
+    console.error("❌ Google Login Error:", error);
     setMsg("Google login failed. Please try again.");
   };
 
@@ -137,7 +148,7 @@ export default function Login() {
           <p className="text-sm md:text-base text-gray-600 mb-6">Login to continue</p>
 
           {msg && (
-            <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+            <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg whitespace-pre-wrap">
               {msg}
             </div>
           )}
@@ -152,6 +163,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full mt-1 px-3 py-2 border rounded-lg text-sm md:text-base"
+                disabled={loading || googleLoading}
               />
             </div>
 
@@ -163,6 +175,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full mt-1 px-3 py-2 border rounded-lg text-sm md:text-base"
+                disabled={loading || googleLoading}
               />
             </div>
 

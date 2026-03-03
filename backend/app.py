@@ -1044,29 +1044,44 @@ def upgrade_semester():
 def get_profile():
     cursor = None
     try:
-        if not db.ensure_connection():
-            return jsonify({"success": False, "message": "Database connection failed"}), 500
+        # Get current user ID from JWT
         current_user_id = get_jwt_identity()
+        print(f"👤 Fetching profile for user ID: {current_user_id}")
         
+        # Check database connection
+        if not db.ensure_connection():
+            print("🔥 Database connection failed in /profile")
+            return jsonify({"success": False, "message": "Database connection failed"}), 500
+        
+        # Get cursor
         cursor = db.get_cursor()
         if not cursor:
-            print("🔥 Database cursor is None - connection failed")
-            return jsonify({"success": False, "message": "Database connection failed"}), 500
+            print("🔥 Failed to get cursor in /profile")
+            return jsonify({"success": False, "message": "Database error"}), 500
+        
+        # Execute query
         cursor.execute("""
             SELECT id, name, email, branch, year, semester, roll_number, role, created_at, is_verified, profile_pic
-            FROM users WHERE id=%s
+            FROM users WHERE id = %s
         """, (current_user_id,))
         
         user = cursor.fetchone()
         
         if not user:
+            print(f"⚠️ User not found for ID: {current_user_id}")
             return jsonify({"success": False, "message": "User not found"}), 404
-            
+        
+        print(f"✅ Profile fetched for: {user['email']}")
         return jsonify({"success": True, "user": user}), 200
         
+    except pymysql.OperationalError as e:
+        print(f"🔥 Database operational error in /profile: {e}")
+        return jsonify({"success": False, "message": "Database connection lost"}), 500
     except Exception as e:
-        print("🔥 PROFILE ERROR:", e)
-        return jsonify({"success": False, "message": "Server error"}), 500
+        print(f"🔥 Profile error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
     finally:
         if cursor:
             cursor.close()

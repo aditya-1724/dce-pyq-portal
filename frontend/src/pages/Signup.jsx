@@ -290,7 +290,7 @@ export default function Signup() {
                     errors.semester ? 'border-red-500' : ''
                   } ${!formData.year ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
-                  <option value="">Sem</option>
+                
                   {semesterOptions.map(num => (
                     <option key={num} value={num}>Semester {num}</option>
                   ))}
@@ -303,13 +303,13 @@ export default function Signup() {
 
             {/* Roll Number Field */}
             <div>
-              <label className="text-xs md:text-sm text-gray-600">Roll Number (5 digits starting with 2)</label>
+              <label className="text-xs md:text-sm text-gray-600">Roll Number </label>
               <input
                 type="text"
                 name="rollNumber"
                 value={formData.rollNumber}
                 onChange={handleChange}
-                placeholder="e.g., 20123"
+                placeholder="ENTER YOUR COLLEGE ROLL NUMBER"
                 maxLength="5"
                 className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm ${
                   errors.rollNumber ? 'border-red-500' : ''

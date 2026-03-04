@@ -1,32 +1,32 @@
 # mail_utils.py
 import random
 import os
-import smtplib
 import pymysql
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
+import sendgrid
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
-# Gmail SMTP Settings
-GMAIL_USER = os.environ.get('GMAIL_USER', 'dceguportal@gmail.com')
-GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', 'szdd ziad yfvh okyj')
+# SendGrid Settings
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+FROM_EMAIL = os.environ.get('FROM_EMAIL', 'dceguportal@gmail.com')
+FROM_NAME = os.environ.get('FROM_NAME', 'DCE PYQ Portal')
 
-print(f"📧 Gmail configured for: {GMAIL_USER}")
-print(f"🔑 App Password loaded: {'YES' if GMAIL_APP_PASSWORD else 'NO'}")
+print(f"📧 SendGrid configured for: {FROM_EMAIL}")
+print(f"🔑 API Key loaded: {'YES' if SENDGRID_API_KEY else 'NO'}")
 
 def generate_otp():
     """Generate 6-digit OTP"""
     return str(random.randint(100000, 999999))
 
 def send_otp_email(to_email, otp, name):
-    """Gmail SMTP se OTP bhejo"""
+    """Send OTP using SendGrid API"""
     
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        print("❌ Gmail credentials not set!")
+    if not SENDGRID_API_KEY:
+        print("❌ SendGrid API key not set!")
         return False
     
     try:
-        # Email content with beautiful HTML template
+        # HTML content (same as before, keeping your beautiful template)
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -127,7 +127,7 @@ def send_otp_email(to_email, otp, name):
         </html>
         """
         
-        # Plain text version for email clients that don't support HTML
+        # Plain text version
         text_content = f"""
         DCE PYQ Portal - Email Verification
         
@@ -143,36 +143,39 @@ def send_otp_email(to_email, otp, name):
         Dronacharya College of Engineering
         """
         
-        # Create message
-        msg = MIMEMultipart('alternative')
-        msg['From'] = GMAIL_USER
-        msg['To'] = to_email
-        msg['Subject'] = "🔐 Your OTP for DCE PYQ Portal Verification"
+        # Create SendGrid message
+        from_email = Email(FROM_EMAIL, FROM_NAME)
+        to_email = To(to_email)
+        subject = "🔐 Your OTP for DCE PYQ Portal Verification"
         
-        # Attach both plain text and HTML versions
-        msg.attach(MIMEText(text_content, 'plain'))
-        msg.attach(MIMEText(html_content, 'html'))
+        # Create both HTML and plain text content
+        message = Mail(
+            from_email=from_email,
+            to_emails=to_email,
+            subject=subject,
+            html_content=html_content
+        )
         
-        # Send via Gmail SMTP
-        print(f"📤 Sending OTP to {to_email}...")
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
-        server.starttls()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(' ', ''))
-        server.send_message(msg)
-        server.quit()
+        # Add plain text version as alternative
+        message.add_content(Content("text/plain", text_content))
         
-        print(f"✅ OTP sent successfully to {to_email}")
-        return True
+        # Send via SendGrid
+        print(f"📤 Sending OTP to {to_email.email} via SendGrid...")
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
         
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"❌ Gmail authentication failed: {e}")
-        print("👉 App password might be expired. Generate new one at: https://myaccount.google.com/apppasswords")
-        return False
-    except smtplib.SMTPException as e:
-        print(f"❌ SMTP error: {e}")
-        return False
+        if response.status_code in [200, 202]:
+            print(f"✅ OTP sent successfully to {to_email.email} (Status: {response.status_code})")
+            return True
+        else:
+            print(f"❌ SendGrid error: Status {response.status_code}")
+            print(f"Response body: {response.body}")
+            return False
+        
     except Exception as e:
-        print(f"❌ Gmail error: {e}")
+        print(f"❌ SendGrid error: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def save_otp_to_db(email, otp):
@@ -256,7 +259,6 @@ def verify_otp_from_db(email, user_otp):
             
             if expired_result:
                 print(f"⚠️ OTP expired for {email}")
-                # Delete expired OTP
                 cursor.execute("DELETE FROM otp_verification WHERE email = %s", (email,))
                 db.commit()
             else:

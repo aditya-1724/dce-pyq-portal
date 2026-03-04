@@ -622,20 +622,29 @@ def signup():
         if cursor.fetchone():
             return jsonify({"success": False, "message": "Roll number already exists for this branch/year"}), 409
 
-        # 👉 PEHLE OTP GENERATE KARO
+        # 👉 OTP GENERATE
         otp = generate_otp()
         
-        # 👉 PHIR OTP SEND KARO
-        otp_sent = send_otp_email(email, otp, name)
-        
-        if not otp_sent:
-            print(f"❌ OTP failed for {email}")
+        # 👉 OTP SEND WITH TRY-CATCH
+        try:
+            otp_sent = send_otp_email(email, otp, name)
+            
+            if not otp_sent:
+                print(f"❌ OTP failed for {email} - function returned False")
+                return jsonify({
+                    "success": False, 
+                    "message": "Failed to send OTP. Please check your email and try again."
+                }), 500
+        except Exception as e:
+            print(f"❌ OTP sending exception: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return jsonify({
                 "success": False, 
-                "message": "Failed to send OTP. Please check your email or try again."
+                "message": f"Email service error: {str(e)}"
             }), 500
 
-        # 👉 AB USER CREATE KARO (jab OTP sent ho gaya)
+        # 👉 USER CREATE
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
         cursor.execute("""
@@ -655,10 +664,17 @@ def signup():
             "email": email
         }), 201
 
-    except Exception as e:
-        print("🔥 SIGNUP ERROR:", e)
+    except pymysql.IntegrityError as e:
+        print(f"🔥 Integrity error: {e}")
         if cursor:
-            db.rollback()  # Rollback if anything fails
+            db.rollback()
+        return jsonify({"success": False, "message": "Database integrity error"}), 500
+    except Exception as e:
+        print(f"🔥 SIGNUP ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        if cursor:
+            db.rollback()
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
     finally:
         if cursor:

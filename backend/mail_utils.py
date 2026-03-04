@@ -155,7 +155,7 @@ def send_otp_email(to_email, otp, name):
         
         # Send via Gmail SMTP
         print(f"📤 Sending OTP to {to_email}...")
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)  # 👈 Added timeout
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
         server.starttls()
         server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(' ', ''))
         server.send_message(msg)
@@ -164,6 +164,10 @@ def send_otp_email(to_email, otp, name):
         print(f"✅ OTP sent successfully to {to_email}")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ Gmail authentication failed: {e}")
+        print("👉 App password might be expired. Generate new one at: https://myaccount.google.com/apppasswords")
+        return False
     except smtplib.SMTPException as e:
         print(f"❌ SMTP error: {e}")
         return False

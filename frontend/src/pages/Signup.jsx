@@ -109,7 +109,7 @@ export default function Signup() {
       });
 
       const data = await res.json();
-      console.log("📦 Backend response:", data); // 👈 CHECK THIS IN CONSOLE
+      console.log("📦 Backend response:", data); 
 
       if (data.success) {
         // ✅ Success - redirect to OTP

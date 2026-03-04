@@ -46,6 +46,13 @@ export default function VerifyOTP() {
     }
   };
 
+  const handleKeyDown = (index, e) => {
+    // Handle backspace to focus previous input
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      document.getElementById(`otp-${index - 1}`).focus();
+    }
+  };
+
   const handleVerify = async () => {
     const otpString = otp.join("");
     if (otpString.length !== 6) {
@@ -108,21 +115,25 @@ export default function VerifyOTP() {
 
   return (
     <div
-      className="min-h-screen w-full bg-cover bg-center relative"
+      className="min-h-screen w-full bg-cover bg-center relative overflow-hidden"
       style={{ backgroundImage: `url(${collegeImg})` }}
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-      <div className="relative z-10 min-h-screen flex items-center justify-between px-20">
-        <div className="text-white max-w-md">
-          <h1 className="text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
-          <p className="text-lg opacity-90">
-            Verify your email to continue
+      {/* 👇 MOBILE FRIENDLY CONTAINER */}
+      <div className="relative z-10 min-h-screen flex flex-col md:flex-row items-center justify-center md:justify-between px-4 md:px-20 py-8 md:py-0">
+        
+        {/* Left Text - Mobile pe upar, Desktop pe left */}
+        <div className="text-white max-w-md text-center md:text-left mb-8 md:mb-0">
+          <h1 className="text-3xl md:text-5xl font-bold mb-3">DCE PYQ PORTAL</h1>
+          <p className="text-sm md:text-lg opacity-90 px-4 md:px-0">
+            Dronacharya College of Engineering
           </p>
         </div>
 
-        <div className="w-full max-w-md rounded-2xl p-8 bg-white shadow-2xl">
-          <h2 className="text-3xl font-semibold mb-2 text-gray-900">
+        {/* OTP Card - Mobile full width */}
+        <div className="w-full max-w-md rounded-2xl p-5 md:p-8 bg-white shadow-2xl">
+          <h2 className="text-2xl md:text-3xl font-semibold mb-2 text-gray-900">
             Verify Email
           </h2>
 
@@ -142,12 +153,15 @@ export default function VerifyOTP() {
             </div>
           )}
 
-          <p className="text-gray-600 mb-6">
-            Enter the 6-digit OTP sent to<br />
-            <span className="font-semibold">{email}</span>
+          <p className="text-sm md:text-base text-gray-600 mb-4">
+            Enter the 6-digit OTP sent to
+          </p>
+          <p className="font-semibold text-indigo-600 break-all text-sm md:text-base mb-6">
+            {email}
           </p>
 
-          <div className="flex justify-between gap-2 mb-6">
+          {/* 👇 OTP Inputs - Better mobile spacing */}
+          <div className="flex justify-between gap-1 md:gap-2 mb-6">
             {otp.map((digit, index) => (
               <input
                 key={index}
@@ -156,7 +170,8 @@ export default function VerifyOTP() {
                 maxLength="1"
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
-                className="w-12 h-12 text-center text-xl border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                className="w-10 h-10 md:w-12 md:h-12 text-center text-lg md:text-xl border rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
             ))}
           </div>
@@ -165,7 +180,7 @@ export default function VerifyOTP() {
             onClick={handleVerify}
             disabled={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-700
-            text-white py-3 rounded-lg font-medium transition disabled:opacity-50 mb-4"
+            text-white py-3 rounded-lg font-medium transition disabled:opacity-50 text-sm md:text-base mb-4"
           >
             {loading ? "Verifying..." : "Verify OTP"}
           </button>
@@ -174,18 +189,18 @@ export default function VerifyOTP() {
             {canResend ? (
               <button
                 onClick={handleResend}
-                className="text-indigo-600 hover:underline"
+                className="text-indigo-600 hover:underline text-sm md:text-base"
               >
                 Resend OTP
               </button>
             ) : (
-              <p className="text-gray-500">
+              <p className="text-gray-500 text-sm md:text-base">
                 Resend OTP in {timer} seconds
               </p>
             )}
           </div>
 
-          <p className="text-sm text-center mt-5 text-gray-500">
+          <p className="text-xs md:text-sm text-center mt-5 text-gray-500">
             <Link to="/signup" className="text-indigo-600 font-medium">
               ← Back to Signup
             </Link>

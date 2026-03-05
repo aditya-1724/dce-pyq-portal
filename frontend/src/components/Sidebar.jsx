@@ -42,7 +42,7 @@ const Sidebar = ({ activeSection, setActiveSection, onSubjectSelect }) => {
     } finally {
       setLoading(false);
     }
-  }, [user?.branch, user?.semester, token]); // ✅ Dependencies added
+  }, [user?.branch, user?.semester, token]);
 
   // Handle resize
   useEffect(() => {
@@ -53,14 +53,14 @@ const Sidebar = ({ activeSection, setActiveSection, onSubjectSelect }) => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []); // No dependencies needed
+  }, []);
 
   // Fetch subjects when dropdown opens
   useEffect(() => {
     if (openSubjects && user?.branch && user?.semester) {
       fetchSubjects();
     }
-  }, [openSubjects, user?.branch, user?.semester, fetchSubjects]); // ✅ All dependencies added
+  }, [openSubjects, user?.branch, user?.semester, fetchSubjects]);
 
   const handleSubjectClick = (subject) => {
     if (onSubjectSelect) {
@@ -120,13 +120,16 @@ const Sidebar = ({ activeSection, setActiveSection, onSubjectSelect }) => {
           <h2 className="text-xl font-bold mb-2 text-white drop-shadow-lg hidden md:block">DCE Portal</h2>
           <p className="text-sm mb-6 text-white/80 mt-12 md:mt-0">👋 {studentName}</p>
 
-          {/* Dashboard */}
+          {/* Dashboard - FIXED: Use setActiveSection instead of navigation */}
           <div
             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer mb-2 transition-all
               ${isActive("dashboard") 
                 ? 'bg-white/20 backdrop-blur-sm border border-white/20' 
                 : 'hover:bg-white/10 text-white/90'}`}
-            onClick={() => handleNavClick("/dashboard")}
+            onClick={() => {
+              setActiveSection("dashboard");
+              setIsMobileOpen(false);
+            }}
           >
             <FaHome /> Dashboard
           </div>
